@@ -2,7 +2,7 @@
   "id": "./",
   "name": "Rattana POS - ร้านรัตนาพานิชย์",
   "short_name": "Rattana POS",
-  "description": "ระบบขายหน้าร้าน POS แบบ Offline-first พร้อม Cloud Sync",
+  "description": "ระบบขายหน้าร้าน POS แบบ Offline-first พร้อม Durable Cloud Sync และ Soft Delete",
   "lang": "th",
   "dir": "ltr",
   "start_url": "./index.html",

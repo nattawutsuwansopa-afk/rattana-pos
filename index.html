@@ -11,7 +11,7 @@
   <link rel="manifest" href="./manifest.webmanifest">
   <link rel="icon" href="./icons/icon-192.png" sizes="192x192">
   <link rel="apple-touch-icon" href="./icons/icon-192.png">
-  <title>ระบบ POS ร้านรัตนาพานิชย์ - PWA v6.2</title>
+  <title>ระบบ POS ร้านรัตนาพานิชย์ - PWA v6.4</title>
   <script src="https://cdn.tailwindcss.com"></script>
   <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
   <script src="https://unpkg.com/html5-qrcode@2.3.8/html5-qrcode.min.js"></script>
@@ -57,7 +57,10 @@ const DEVICE_ID_KEY = STORAGE_KEY + '_device_id';
 const DEVICE_PREFS_KEY = STORAGE_KEY + '_device_prefs';
 const RESET_TRASH_KEY = STORAGE_KEY + '_reset_trash';
 const BULK_TRASH_KEY = STORAGE_KEY + '_bulk_trash_v1';
+const SYNC_QUEUE_KEY = STORAGE_KEY + '_cloud_pending_v2';
 const AUTO_SYNC_INTERVAL_MS = 15000;
+const SYNC_SCHEMA_VERSION = 2;
+const SYNC_COLLECTIONS = ['products','sales','stockLogs','heldBills','promotions','members','users','suppliers','supplierLedger','shiftClosures','stockCounts','auditLogs'];
 let deferredInstallPrompt = null, syncTimer = null, autoSyncInterval = null, syncBusy = false, aiProductAnalysisBusy = false, lastSyncMessage = '', deferredCloudRender = false;
 
 const defaultConfig = {
@@ -66,6 +69,7 @@ const defaultConfig = {
   primary_action_color:'#10b981', secondary_action_color:'#6366f1', low_stock_default:5
 };
 let state = loadState();
+let syncShadow = buildSyncShadow(state);
 let selectedPromoId='', currentMemberId='', memberSearchDraft='', currentUser=loadSessionUser(), scanner=null, scannerActive=false, chartInstances={};
 let activeTab=currentUser?'dashboard':'pos', searchTerm='', selectedCategory='ทั้งหมด', cart=[], paymentMethod='cash', cashReceived='';
 let saleSearch='', saleDateFrom='', saleDateTo='', stockFilter='all', menuOpen=false;
@@ -77,17 +81,40 @@ let memberPointRedemption={points:0,baht:0};
 function safeColor(v,fallback){return /^#[0-9a-fA-F]{6}$/.test(String(v||''))?String(v):fallback}
 function normalizeConfig(c){return {...defaultConfig,...c,background_color:safeColor(c.background_color,defaultConfig.background_color),surface_color:safeColor(c.surface_color,defaultConfig.surface_color),text_color:safeColor(c.text_color,defaultConfig.text_color),primary_action_color:safeColor(c.primary_action_color,defaultConfig.primary_action_color),secondary_action_color:safeColor(c.secondary_action_color,defaultConfig.secondary_action_color)}}
 function initialState(){
+  const seed='1970-01-01T00:00:00.000Z';
   return {
-    version:12, updatedAt:'1970-01-01T00:00:00.000Z', config:{...defaultConfig}, products:[], sales:[], stockLogs:[], heldBills:[], promotions:[], members:[], suppliers:[], supplierLedger:[], shiftClosures:[], stockCounts:[], auditLogs:[],
-    users:[{id:'u_owner',name:'เจ้าของร้าน',role:'owner',pin:'1234',active:true}], nextOrder:1,
-    settings:{requireLogin:true,discountPresets:[10,20,50,100],newSaleReset:{confirm:true,member:true,discount:true,cash:true},imageRecognitionEnabled:true,imageRecognitionThreshold:0.84,aiProductRecognitionEnabled:true,expiryWarnDays:30,memberPoints:{enabled:true,earnBaht:100,earnPoints:1,redeemBahtPerPoint:1,minRedeemPoints:1}}
+    version:13, updatedAt:seed, config:{...defaultConfig}, products:[], sales:[], stockLogs:[], heldBills:[], promotions:[], members:[], suppliers:[], supplierLedger:[], shiftClosures:[], stockCounts:[], auditLogs:[],
+    users:[{id:'u_owner',name:'เจ้าของร้าน',role:'owner',pin:'1234',active:true,updatedAt:seed,deviceId:'seed'}], nextOrder:1,
+    settings:{requireLogin:true,discountPresets:[10,20,50,100],newSaleReset:{confirm:true,member:true,discount:true,cash:true},imageRecognitionEnabled:true,imageRecognitionThreshold:0.84,aiProductRecognitionEnabled:true,expiryWarnDays:30,memberPoints:{enabled:true,earnBaht:100,earnPoints:1,redeemBahtPerPoint:1,minRedeemPoints:1}},
+    tombstones:[], recycleBin:[], syncMeta:{config:{updatedAt:seed,deviceId:'seed'},settings:{updatedAt:seed,deviceId:'seed'},nextOrder:{updatedAt:seed,deviceId:'seed'}}
   };
 }
+function recordTimeGuess(r,fallback='1970-01-01T00:00:00.000Z'){
+  for(const k of ['updatedAt','timestamp','time','createdAt','savedAt','deletedAt']){const v=r&&r[k];if(v&&!Number.isNaN(Date.parse(v)))return new Date(v).toISOString()}
+  return (!Number.isNaN(Date.parse(fallback||''))?new Date(fallback).toISOString():'1970-01-01T00:00:00.000Z');
+}
+function normalizeSyncMetaObject(v,fallback){const t=recordTimeGuess(v,fallback);return {updatedAt:t,deviceId:String(v?.deviceId||'legacy')}}
+function ensureSyncBases(s){
+  const qtyBy={};for(const l of (s.stockLogs||[])){if(!l?.productId)continue;qtyBy[l.productId]=(qtyBy[l.productId]||0)+n(l.qty)}
+  for(const p of (s.products||[])){if(!Number.isFinite(Number(p.stockSyncBase)))p.stockSyncBase=n(p.stock)-n(qtyBy[p.id]);}
+  for(const m of (s.members||[])){const hist=Array.isArray(m.pointsHistory)?m.pointsHistory:[],sum=hist.reduce((a,x)=>a+Math.trunc(n(x.points)),0);if(!Number.isFinite(Number(m.pointsSyncBase)))m.pointsSyncBase=Math.max(0,Math.trunc(n(m.pointsBalance))-sum)}
+}
+function normalizeSyncMetadata(s){
+  const fallback=recordTimeGuess({updatedAt:s.updatedAt});
+  for(const key of SYNC_COLLECTIONS){s[key]=Array.isArray(s[key])?s[key]:[];s[key]=s[key].filter(x=>x&&typeof x==='object').map((r,i)=>{if(!r.id)r.id=uid(key.slice(0,3)||'id');r.updatedAt=recordTimeGuess(r,fallback);r.deviceId=String(r.deviceId||'legacy');return r})}
+  s.tombstones=(Array.isArray(s.tombstones)?s.tombstones:[]).filter(Boolean).map(t=>({...t,id:String(t.id||`${t.collection||'data'}|${t.recordId||uid('del')}`),recordId:String(t.recordId||''),collection:String(t.collection||''),deleted:t.deleted!==false,updatedAt:recordTimeGuess(t,t.deletedAt||fallback),deviceId:String(t.deviceId||'legacy')}));
+  s.recycleBin=(Array.isArray(s.recycleBin)?s.recycleBin:[]).filter(Boolean).map(x=>({...x,id:String(x.id||uid('trash')),updatedAt:recordTimeGuess(x,x.deletedAt||fallback),deviceId:String(x.deviceId||'legacy')}));
+  const sm=s.syncMeta||{};s.syncMeta={config:normalizeSyncMetaObject(sm.config,fallback),settings:normalizeSyncMetaObject(sm.settings,fallback),nextOrder:normalizeSyncMetaObject(sm.nextOrder,fallback)};
+  s.updatedAt=recordTimeGuess({updatedAt:s.updatedAt},fallback);ensureSyncBases(s);return s;
+}
+function normalizeLoadedState(s){
+  const base=initialState(),src=s||{},incoming=src.settings||{};
+  const out={...base,...src,version:13,config:normalizeConfig(src.config||{}),products:(src.products||[]).map(p=>({...p,keywords:p.keywords||'',supplierId:p.supplierId||'',expiryDate:p.expiryDate||'',expiryWarnDays:n(p.expiryWarnDays,incoming.expiryWarnDays||30),promoEnabled:!!p.promoEnabled,promoPrice:Math.max(0,n(p.promoPrice,0)),promoStartDate:p.promoStartDate||'',promoEndDate:p.promoEndDate||''})),members:(src.members||[]).map(m=>({...m,pointsBalance:Math.max(0,Math.trunc(n(m.pointsBalance,0))),pointsHistory:Array.isArray(m.pointsHistory)?m.pointsHistory:[]})),suppliers:Array.isArray(src.suppliers)?src.suppliers:[],supplierLedger:Array.isArray(src.supplierLedger)?src.supplierLedger:[],shiftClosures:Array.isArray(src.shiftClosures)?src.shiftClosures:[],stockCounts:Array.isArray(src.stockCounts)?src.stockCounts:[],auditLogs:Array.isArray(src.auditLogs)?src.auditLogs:[],tombstones:Array.isArray(src.tombstones)?src.tombstones:[],recycleBin:Array.isArray(src.recycleBin)?src.recycleBin:[],settings:{...base.settings,...incoming,newSaleReset:{...base.settings.newSaleReset,...(incoming.newSaleReset||{})},memberPoints:{...base.settings.memberPoints,...(incoming.memberPoints||{})}}};
+  return normalizeSyncMetadata(out);
+}
 function loadState(){
-  try{
-    const raw=localStorage.getItem(STORAGE_KEY); if(!raw) return initialState();
-    const s=JSON.parse(raw),base=initialState(),incoming=s.settings||{}; return {...base,...s,version:12,config:normalizeConfig(s.config||{}),products:(s.products||[]).map(p=>({...p,keywords:p.keywords||'',supplierId:p.supplierId||'',expiryDate:p.expiryDate||'',expiryWarnDays:n(p.expiryWarnDays,incoming.expiryWarnDays||30),promoEnabled:!!p.promoEnabled,promoPrice:Math.max(0,n(p.promoPrice,0)),promoStartDate:p.promoStartDate||'',promoEndDate:p.promoEndDate||''})),members:(s.members||[]).map(m=>({...m,pointsBalance:Math.max(0,Math.trunc(n(m.pointsBalance,0))),pointsHistory:Array.isArray(m.pointsHistory)?m.pointsHistory:[]})),suppliers:Array.isArray(s.suppliers)?s.suppliers:[],supplierLedger:Array.isArray(s.supplierLedger)?s.supplierLedger:[],shiftClosures:Array.isArray(s.shiftClosures)?s.shiftClosures:[],stockCounts:Array.isArray(s.stockCounts)?s.stockCounts:[],auditLogs:Array.isArray(s.auditLogs)?s.auditLogs:[],settings:{...base.settings,...incoming,newSaleReset:{...base.settings.newSaleReset,...(incoming.newSaleReset||{})},memberPoints:{...base.settings.memberPoints,...(incoming.memberPoints||{})}}};
-  }catch(e){console.warn(e);return initialState()}
+  try{const raw=localStorage.getItem(STORAGE_KEY);return raw?normalizeLoadedState(JSON.parse(raw)):normalizeLoadedState(initialState())}
+  catch(e){console.warn(e);return normalizeLoadedState(initialState())}
 }
 function getSyncCfg(){
   try{return {...{url:'',token:'',auto:true,intervalSec:15},...JSON.parse(localStorage.getItem(SYNC_CFG_KEY)||'{}')}}catch(e){return {url:'',token:'',auto:true,intervalSec:15}}
@@ -134,79 +161,47 @@ function saveDeviceSettings(btn){
   applyDeviceProfile();closeModal(btn);render();toast(`ปรับหน้าจอสำหรับ ${deviceModeName(resolveDeviceProfile().mode)} แล้ว`)
 }
 function resetDeviceSettings(btn){setDevicePrefs({mode:'auto',scale:'auto',touch:'auto'});applyDeviceProfile();closeModal(btn);render();toast('กลับเป็นการปรับหน้าจออัตโนมัติแล้ว')}
-function persistState(touch=true){
-  if(touch) state.updatedAt=new Date().toISOString();
-  localStorage.setItem(STORAGE_KEY, JSON.stringify(state));
-  if(touch) scheduleCloudSync();
+function syncComparable(r){if(!r||typeof r!=='object')return '';const c={...r};delete c.updatedAt;delete c.deviceId;return JSON.stringify(c)}
+function buildSyncShadow(s){const out={collections:{},config:JSON.stringify(s.config||{}),settings:JSON.stringify(s.settings||{}),nextOrder:n(s.nextOrder,1)};for(const k of SYNC_COLLECTIONS){out.collections[k]={};for(const r of (s[k]||[]))out.collections[k][String(r.id)]={hash:syncComparable(r),record:JSON.parse(JSON.stringify(r))}}return out}
+function getPendingSyncQueue(){try{return Array.isArray(JSON.parse(localStorage.getItem(SYNC_QUEUE_KEY)||'[]'))?JSON.parse(localStorage.getItem(SYNC_QUEUE_KEY)||'[]'):[]}catch(e){return []}}
+function savePendingSyncQueue(q){localStorage.setItem(SYNC_QUEUE_KEY,JSON.stringify((q||[]).slice(-6000)))}
+function queueSyncChange(collection,id,action,updatedAt){const key=collection+'|'+String(id),q=getPendingSyncQueue(),i=q.findIndex(x=>x.key===key),item={key,collection,id:String(id),action,updatedAt:updatedAt||new Date().toISOString()};if(i>=0)q[i]=item;else q.push(item);savePendingSyncQueue(q)}
+function clearPendingSyncQueueThrough(cutoff){const t=Date.parse(cutoff||0)||0;savePendingSyncQueue(getPendingSyncQueue().filter(x=>(Date.parse(x.updatedAt||0)||0)>t))}
+function tombstoneFor(collection,id){return (state.tombstones||[]).find(x=>x.collection===collection&&String(x.recordId)===String(id))||null}
+function setTombstone(collection,id,deleted,when,dev){state.tombstones=Array.isArray(state.tombstones)?state.tombstones:[];let t=tombstoneFor(collection,id);if(!t){t={id:`${collection}|${id}`,collection,recordId:String(id)};state.tombstones.push(t)}Object.assign(t,{deleted:!!deleted,updatedAt:when,deviceId:dev});if(deleted)t.deletedAt=when;else t.restoredAt=when;queueSyncChange('tombstones',t.id,deleted?'delete':'restore',when);return t}
+function addRecycleEntry(collection,record,when,dev){state.recycleBin=Array.isArray(state.recycleBin)?state.recycleBin:[];const existing=state.recycleBin.find(x=>x.collection===collection&&String(x.recordId)===String(record.id)&&!x.restoredAt&&!x.purgedAt);if(existing)return existing;const e={id:uid('trash'),collection,recordId:String(record.id),record:JSON.parse(JSON.stringify(record)),deletedAt:when,updatedAt:when,deviceId:dev};state.recycleBin.unshift(e);queueSyncChange('recycleBin',e.id,'delete',when);return e}
+function markRecycleRestored(collection,id,when,dev){for(const e of (state.recycleBin||[])){if(e.collection===collection&&String(e.recordId)===String(id)&&!e.restoredAt&&!e.purgedAt){e.restoredAt=when;e.updatedAt=when;e.deviceId=dev;queueSyncChange('recycleBin',e.id,'restore',when)}}}
+function stampSyncChanges(){
+  ensureSyncBases(state);const now=new Date().toISOString(),dev=getDeviceId(),prev=syncShadow||buildSyncShadow(state);
+  for(const k of SYNC_COLLECTIONS){const old=prev.collections[k]||{},cur=Array.isArray(state[k])?state[k]:[],seen=new Set();for(const r of cur){if(!r.id)r.id=uid(k.slice(0,3)||'id');const id=String(r.id);seen.add(id);const before=old[id],changed=!before||before.hash!==syncComparable(r);if(changed){r.updatedAt=now;r.deviceId=dev;queueSyncChange(k,id,before?'update':'create',now);if(!before&&tombstoneFor(k,id)?.deleted){setTombstone(k,id,false,now,dev);markRecycleRestored(k,id,now,dev)}}else{r.updatedAt=recordTimeGuess(r,state.updatedAt);r.deviceId=String(r.deviceId||'legacy')}}for(const [id,info] of Object.entries(old)){if(seen.has(id))continue;setTombstone(k,id,true,now,dev);addRecycleEntry(k,info.record,now,dev)}}
+  if(prev.config!==JSON.stringify(state.config||{})){state.syncMeta.config={updatedAt:now,deviceId:dev};queueSyncChange('_meta','config','update',now)}
+  if(prev.settings!==JSON.stringify(state.settings||{})){state.syncMeta.settings={updatedAt:now,deviceId:dev};queueSyncChange('_meta','settings','update',now)}
+  if(n(prev.nextOrder,1)!==n(state.nextOrder,1)){state.syncMeta.nextOrder={updatedAt:now,deviceId:dev};queueSyncChange('_meta','nextOrder','update',now)}
+  state.updatedAt=now;
 }
-function saveState(){ persistState(true); }
-function hasBusinessData(s=state){
-  return !!((s.products||[]).length||(s.sales||[]).length||(s.stockLogs||[]).length||(s.heldBills||[]).length||(s.promotions||[]).length||(s.members||[]).length||(s.suppliers||[]).length||(s.supplierLedger||[]).length||(s.shiftClosures||[]).length||(s.stockCounts||[]).length||(s.auditLogs||[]).length||n(s.nextOrder,1)>1);
-}
-function scheduleCloudSync(){
-  const cfg=getSyncCfg();
-  if(!cfg.auto||!cfg.url||!cfg.token||!navigator.onLine)return;
-  clearTimeout(syncTimer);syncTimer=setTimeout(()=>syncNow(true,!hasBusinessData()),1800);
-}
-function cloudRenderIsBusy(){
-  // Never rebuild the selling screen while the cashier is in the middle of a bill,
-  // typing money/barcode, or using a modal. Data can update in memory silently.
-  const modalOpen=!!document.querySelector('.fixed.inset-0');
-  const active=document.activeElement;
-  const typing=!!(active&&active.matches&&active.matches('input,textarea,select'));
-  return modalOpen || (activeTab==='pos' && (cart.length>0 || saleView==='checkout' || typing));
-}
-function flushDeferredCloudRender(){
-  if(deferredCloudRender&&!cloudRenderIsBusy()){
-    deferredCloudRender=false;
-    render();
-  }
-}
-function startBackgroundSyncLoop(){
-  if(autoSyncInterval){clearInterval(autoSyncInterval);autoSyncInterval=null}
-  const cfg=getSyncCfg();
-  if(!cfg.auto)return;
-  autoSyncInterval=setInterval(()=>{
-    const c=getSyncCfg();
-    if(c.auto&&c.url&&c.token&&navigator.onLine&&!document.hidden)syncNow(true,!hasBusinessData());
-    // Check for a newer PWA package too, but never reload the current sale automatically.
-    if('serviceWorker' in navigator&&navigator.onLine){navigator.serviceWorker.getRegistration().then(r=>r&&r.update()).catch(()=>{})}
-    flushDeferredCloudRender();
-  },AUTO_SYNC_INTERVAL_MS);
-}
-function applyCloudState(incoming){
-  state={...initialState(),...incoming,version:11,config:normalizeConfig(incoming.config||{}),products:(incoming.products||[]).map(p=>({...p,keywords:p.keywords||'',supplierId:p.supplierId||'',expiryDate:p.expiryDate||'',expiryWarnDays:n(p.expiryWarnDays,(incoming.settings||{}).expiryWarnDays||30)})),members:(incoming.members||[]).map(m=>({...m,pointsBalance:Math.max(0,Math.trunc(n(m.pointsBalance,0))),pointsHistory:Array.isArray(m.pointsHistory)?m.pointsHistory:[]})),suppliers:Array.isArray(incoming.suppliers)?incoming.suppliers:[],supplierLedger:Array.isArray(incoming.supplierLedger)?incoming.supplierLedger:[],shiftClosures:Array.isArray(incoming.shiftClosures)?incoming.shiftClosures:[],stockCounts:Array.isArray(incoming.stockCounts)?incoming.stockCounts:[],auditLogs:Array.isArray(incoming.auditLogs)?incoming.auditLogs:[],settings:{...initialState().settings,...(incoming.settings||{}),newSaleReset:{...initialState().settings.newSaleReset,...((incoming.settings||{}).newSaleReset||{})},memberPoints:{...initialState().settings.memberPoints,...((incoming.settings||{}).memberPoints||{})}}};
-  persistState(false);
-  currentUser=loadSessionUser();
-}
+function persistState(touch=true){if(touch)stampSyncChanges();localStorage.setItem(STORAGE_KEY,JSON.stringify(state));syncShadow=buildSyncShadow(state);if(touch)scheduleCloudSync()}
+function saveState(){persistState(true)}
+function hasBusinessData(s=state){return !!((s.products||[]).length||(s.sales||[]).length||(s.stockLogs||[]).length||(s.heldBills||[]).length||(s.promotions||[]).length||(s.members||[]).length||(s.suppliers||[]).length||(s.supplierLedger||[]).length||(s.shiftClosures||[]).length||(s.stockCounts||[]).length||(s.auditLogs||[]).length||n(s.nextOrder,1)>1)}
+function scheduleCloudSync(){const cfg=getSyncCfg();if(!cfg.auto||!cfg.url||!cfg.token||!navigator.onLine)return;clearTimeout(syncTimer);syncTimer=setTimeout(()=>syncNow(true,false),650)}
+function cloudRenderIsBusy(){const modalOpen=!!document.querySelector('.fixed.inset-0'),active=document.activeElement,typing=!!(active&&active.matches&&active.matches('input,textarea,select'));return modalOpen||(activeTab==='pos'&&(cart.length>0||saleView==='checkout'||typing))}
+function flushDeferredCloudRender(){if(deferredCloudRender&&!cloudRenderIsBusy()){deferredCloudRender=false;render()}}
+function recordVersionCompare(a,b){const ta=Date.parse(a?.updatedAt||0)||0,tb=Date.parse(b?.updatedAt||0)||0;if(ta!==tb)return ta-tb;return String(a?.deviceId||'').localeCompare(String(b?.deviceId||''))}
+function chooseNewerRecord(a,b){if(!a)return b?JSON.parse(JSON.stringify(b)):null;if(!b)return JSON.parse(JSON.stringify(a));return JSON.parse(JSON.stringify(recordVersionCompare(a,b)>=0?a:b))}
+function mergeSimpleList(a,b){const m=new Map();for(const r of [...(a||[]),...(b||[])]){if(!r?.id)continue;const id=String(r.id),cur=m.get(id);m.set(id,chooseNewerRecord(cur,r))}return [...m.values()]}
+function mergeMemberRecords(a,b){const base=chooseNewerRecord(a,b)||{},hist=mergeSimpleList(a?.pointsHistory||[],b?.pointsHistory||[]).sort((x,y)=>(Date.parse(y.time||0)||0)-(Date.parse(x.time||0)||0));base.pointsHistory=hist;const ab=Number.isFinite(Number(base.pointsSyncBase))?Number(base.pointsSyncBase):0;base.pointsSyncBase=ab;base.pointsBalance=Math.max(0,Math.trunc(ab+hist.reduce((sum,x)=>sum+Math.trunc(n(x.points)),0)));return base}
+function mergeMemberList(a,b){const ma=new Map((a||[]).filter(x=>x?.id).map(x=>[String(x.id),x])),mb=new Map((b||[]).filter(x=>x?.id).map(x=>[String(x.id),x])),ids=new Set([...ma.keys(),...mb.keys()]);return [...ids].map(id=>mergeMemberRecords(ma.get(id),mb.get(id)))}
+function newerMeta(a,b){return recordVersionCompare(a,b)>=0?(a||b):(b||a)}
+function reconcileDerivedSyncData(s){ensureSyncBases(s);const qty={};for(const l of (s.stockLogs||[])){qty[l.productId]=(qty[l.productId]||0)+n(l.qty)}for(const p of (s.products||[]))p.stock=Math.max(0,Math.trunc(n(p.stockSyncBase)+n(qty[p.id])));for(const m of (s.members||[])){const hist=Array.isArray(m.pointsHistory)?m.pointsHistory:[];m.pointsBalance=Math.max(0,Math.trunc(n(m.pointsSyncBase)+hist.reduce((a,x)=>a+Math.trunc(n(x.points)),0)))}return s}
+function mergeStatesInBrowser(cloud,local){
+  const a=normalizeLoadedState(JSON.parse(JSON.stringify(cloud||{}))),b=normalizeLoadedState(JSON.parse(JSON.stringify(local||{}))),out=initialState();out.tombstones=mergeSimpleList(a.tombstones,b.tombstones);out.recycleBin=mergeSimpleList(a.recycleBin,b.recycleBin);const tomb=new Map(out.tombstones.map(t=>[`${t.collection}|${t.recordId}`,t]));for(const k of SYNC_COLLECTIONS){let list=k==='members'?mergeMemberList(a[k],b[k]):mergeSimpleList(a[k],b[k]);list=list.filter(r=>{const t=tomb.get(`${k}|${r.id}`);return !(t&&t.deleted===true)});out[k]=list}out.syncMeta={config:newerMeta(a.syncMeta?.config,b.syncMeta?.config)||out.syncMeta.config,settings:newerMeta(a.syncMeta?.settings,b.syncMeta?.settings)||out.syncMeta.settings,nextOrder:newerMeta(a.syncMeta?.nextOrder,b.syncMeta?.nextOrder)||out.syncMeta.nextOrder};out.config=recordVersionCompare(a.syncMeta?.config,b.syncMeta?.config)>=0?a.config:b.config;out.settings=recordVersionCompare(a.syncMeta?.settings,b.syncMeta?.settings)>=0?a.settings:b.settings;out.nextOrder=Math.max(n(a.nextOrder,1),n(b.nextOrder,1));out.updatedAt=new Date(Math.max(Date.parse(a.updatedAt||0)||0,Date.parse(b.updatedAt||0)||0)).toISOString();return reconcileDerivedSyncData(normalizeLoadedState(out))}
+function startBackgroundSyncLoop(){if(autoSyncInterval){clearInterval(autoSyncInterval);autoSyncInterval=null}const cfg=getSyncCfg();if(!cfg.auto)return;autoSyncInterval=setInterval(()=>{const c=getSyncCfg();if(c.auto&&c.url&&c.token&&navigator.onLine&&!document.hidden)syncNow(true,false);if('serviceWorker' in navigator&&navigator.onLine){navigator.serviceWorker.getRegistration().then(r=>r&&r.update()).catch(()=>{})}flushDeferredCloudRender()},AUTO_SYNC_INTERVAL_MS)}
+function applyCloudState(incoming,mergeLocal=true){const next=mergeLocal?mergeStatesInBrowser(incoming,state):normalizeLoadedState(incoming);state=next;persistState(false);currentUser=loadSessionUser()}
 async function syncNow(silent=false,forcePull=false){
-  const cfg=getSyncCfg();
-  if(syncBusy)return;
-  if(!cfg.url||!cfg.token){if(!silent){toast('ตั้งค่า Cloud Sync ในเมนู Backup / Cloud ก่อน',true);openDataTools()}return}
-  if(!navigator.onLine){if(!silent)toast('ออฟไลน์อยู่ ข้อมูลที่เคยดึงไว้ยังใช้ได้ และจะซิงก์เมื่อมีอินเทอร์เน็ต',true);return}
-  syncBusy=true;lastSyncMessage=forcePull?'กำลังดึงข้อมูลจากคลาวด์…':'กำลังซิงก์…';
-  try{
-    const payload=forcePull?{action:'pull',token:cfg.token,deviceId:getDeviceId()}:{action:'sync',token:cfg.token,deviceId:getDeviceId(),state};
-    const res=await fetch(cfg.url,{method:'POST',headers:{'Content-Type':'text/plain;charset=utf-8'},body:JSON.stringify(payload)});
-    if(!res.ok)throw new Error('HTTP '+res.status);
-    const data=await res.json();
-    if(!data.ok)throw new Error(data.error||'sync failed');
-    if(data.mode==='pulled'&&data.state){
-      const deferRender=cloudRenderIsBusy();
-      applyCloudState(data.state);
-      lastSyncMessage='รับข้อมูลจากคลาวด์แล้ว';
-      if(deferRender)deferredCloudRender=true;else render();
-    }else if(data.mode==='pushed') lastSyncMessage='ส่งข้อมูลขึ้นคลาวด์แล้ว';
-    else if(data.mode==='empty') lastSyncMessage='คลาวด์ยังไม่มีข้อมูล';
-    else lastSyncMessage='ข้อมูลตรงกันแล้ว';
-    localStorage.setItem(SYNC_CFG_KEY+'_last',new Date().toISOString());
-    if(!silent)toast('☁️ '+lastSyncMessage);
-  }catch(e){
-    console.warn('Cloud sync failed',e);lastSyncMessage='ซิงก์ไม่สำเร็จ';
-    if(!silent)toast('ซิงก์ไม่สำเร็จ ตรวจ URL / รหัส Sync / Backend และอินเทอร์เน็ต',true);
-  }finally{syncBusy=false;flushDeferredCloudRender()}
+  const cfg=getSyncCfg();if(syncBusy)return;if(!cfg.url||!cfg.token){if(!silent){toast('ตั้งค่า Cloud Sync ในเมนู Backup / Cloud ก่อน',true);openDataTools()}return}if(!navigator.onLine){if(!silent)toast('ออฟไลน์อยู่ • เก็บรายการไว้ในเครื่องและจะส่งเมื่อออนไลน์',true);return}
+  syncBusy=true;const startedAt=new Date().toISOString(),pendingBefore=getPendingSyncQueue().length;lastSyncMessage=forcePull?'กำลังดึงข้อมูลจากคลาวด์…':pendingBefore?`กำลังส่ง ${pendingBefore} รายการ…`:'กำลังตรวจข้อมูล…';
+  try{const payload=forcePull?{action:'pull',token:cfg.token,deviceId:getDeviceId(),schemaVersion:SYNC_SCHEMA_VERSION}:{action:'sync',token:cfg.token,deviceId:getDeviceId(),schemaVersion:SYNC_SCHEMA_VERSION,pendingCount:pendingBefore,state};const res=await fetch(cfg.url,{method:'POST',headers:{'Content-Type':'text/plain;charset=utf-8'},body:JSON.stringify(payload)});if(!res.ok)throw new Error('HTTP '+res.status);const data=await res.json();if(!data.ok)throw new Error(data.error||'sync failed');if((data.mode==='merged'||data.mode==='pulled')&&data.state){const deferRender=cloudRenderIsBusy();applyCloudState(data.state,!forcePull);lastSyncMessage=data.mode==='merged'?'ซิงก์ข้อมูลทุกเครื่องแล้ว':'รับข้อมูลจากคลาวด์แล้ว';if(deferRender)deferredCloudRender=true;else render()}else if(data.mode==='pushed')lastSyncMessage='ส่งข้อมูลขึ้นคลาวด์แล้ว';else if(data.mode==='empty')lastSyncMessage='คลาวด์ยังไม่มีข้อมูล';else lastSyncMessage='ข้อมูลตรงกันแล้ว';if(!forcePull)clearPendingSyncQueueThrough(startedAt);localStorage.setItem(SYNC_CFG_KEY+'_last',new Date().toISOString());if(data.backupDate)localStorage.setItem(SYNC_CFG_KEY+'_backup_date',data.backupDate);if(!silent)toast('☁️ '+lastSyncMessage)}catch(e){console.warn('Cloud sync failed',e);lastSyncMessage='ซิงก์ไม่สำเร็จ';if(!silent)toast('ซิงก์ไม่สำเร็จ • ข้อมูลยังเก็บในเครื่องและจะลองใหม่',true)}finally{syncBusy=false;flushDeferredCloudRender();if(navigator.onLine&&getPendingSyncQueue().length&&getSyncCfg().auto)clearTimeout(syncTimer),syncTimer=setTimeout(()=>syncNow(true,false),1400)}
 }
-function cloudStatusText(){const cfg=getSyncCfg();if(!navigator.onLine)return '📴 ออฟไลน์ • ใช้ข้อมูลในเครื่อง';if(!cfg.url||!cfg.token)return '☁️ ยังไม่ตั้งค่า';return syncBusy?'☁️ กำลังซิงก์':(hasBusinessData()?'☁️ พร้อมซิงก์':'☁️ พร้อมดึงข้อมูล')}
+function cloudStatusText(){const cfg=getSyncCfg(),pending=getPendingSyncQueue().length,last=localStorage.getItem(SYNC_CFG_KEY+'_last');if(!navigator.onLine)return `📴 ออฟไลน์ • รอส่ง ${pending} รายการ`;if(!cfg.url||!cfg.token)return '☁️ ยังไม่ตั้งค่า';if(syncBusy)return '☁️ กำลังซิงก์';if(pending)return `🟡 รอส่ง ${pending} รายการ`;return `🟢 ซิงก์แล้ว${last?' '+new Date(last).toLocaleTimeString('th-TH'):''}`}
 function saveCloudSettings(btn){
   const url=(document.getElementById('syncUrl')?.value||'').trim();
   const token=(document.getElementById('syncToken')?.value||'').trim();
@@ -214,22 +209,19 @@ function saveCloudSettings(btn){
   if(url&&!/^https:\/\/script\.google\.com\/macros\/s\//.test(url))return toast('URL ต้องเป็น Web App ของ Google Apps Script (/exec)',true);
   setSyncCfg({url,token,auto,intervalSec:15});
   startBackgroundSyncLoop();
-  closeModal(btn);toast('บันทึก Cloud Sync แล้ว • อัปเดตอัตโนมัติทุก 15 วินาที');if(url&&token&&navigator.onLine)syncNow(true,!hasBusinessData());
+  closeModal(btn);toast('บันทึก Cloud Sync แล้ว • เก็บในเครื่องทันทีและตรวจ Cloud ทุก 15 วินาที');if(url&&token&&navigator.onLine)syncNow(true,!hasBusinessData());
 }
-function pullCloudNow(){
-  if(!navigator.onLine)return toast('ต้องออนไลน์ครั้งแรกเพื่อดึงรายการสินค้าลงมือถือ',true);
-  syncNow(false,true);
-}
-async function bootstrapCloudOnLoad(){
-  const cfg=getSyncCfg();
-  if(cfg.auto&&cfg.url&&cfg.token&&navigator.onLine&&!hasBusinessData())await syncNow(true,true);
-}
+function pullCloudNow(){if(!navigator.onLine)return toast('ต้องออนไลน์เพื่อดึงข้อมูล Cloud',true);const p=getPendingSyncQueue().length;if(p&&!confirm(`มี ${p} รายการในเครื่องที่ยังรอส่ง
+ถ้าดึง Cloud ตอนนี้ ระบบจะใช้ Cloud เป็นหลักสำหรับการดึงครั้งนี้ ต้องการดำเนินการต่อ?`))return;syncNow(false,true)}
+
+async function bootstrapCloudOnLoad(){const cfg=getSyncCfg();if(cfg.auto&&cfg.url&&cfg.token&&navigator.onLine)await syncNow(true,!hasBusinessData())}
+
 function installPWA(){
   if(deferredInstallPrompt){deferredInstallPrompt.prompt();deferredInstallPrompt.userChoice.finally(()=>{deferredInstallPrompt=null})}
   else toast('ถ้าไม่เห็นปุ่มติดตั้ง ให้ใช้เมนูเบราว์เซอร์ “เพิ่มไปยังหน้าจอหลัก / Install app”');
 }
 window.addEventListener('beforeinstallprompt',e=>{e.preventDefault();deferredInstallPrompt=e});
-window.addEventListener('online',()=>{toast('🟢 ออนไลน์แล้ว');if(hasBusinessData())scheduleCloudSync();else syncNow(true,true);startBackgroundSyncLoop();if(!cloudRenderIsBusy())render()});
+window.addEventListener('online',()=>{toast('🟢 ออนไลน์แล้ว • กำลังส่งรายการที่ค้าง');setTimeout(()=>syncNow(true,!hasBusinessData()),250);startBackgroundSyncLoop();if(!cloudRenderIsBusy())render()});
 window.addEventListener('offline',()=>{toast('📴 ออฟไลน์ — ยังขายต่อได้ ข้อมูลอยู่ในเครื่อง');if(!cloudRenderIsBusy())render()});
 document.addEventListener('visibilitychange',()=>{if(!document.hidden){const c=getSyncCfg();if(c.auto&&c.url&&c.token&&navigator.onLine)syncNow(true,!hasBusinessData());flushDeferredCloudRender()}});
 if('serviceWorker' in navigator)window.addEventListener('load',()=>navigator.serviceWorker.register('./sw.js').catch(e=>console.warn('SW register failed',e)));
@@ -846,11 +838,16 @@ function stats(){const now=new Date(),today=new Date(now.getFullYear(),now.getMo
 // -----------------------
 function downloadBlob(name,content,type='text/plain;charset=utf-8'){const a=document.createElement('a');a.href=URL.createObjectURL(new Blob([content],{type}));a.download=name;a.click();setTimeout(()=>URL.revokeObjectURL(a.href),1000)}
 function backupJSON(){downloadBlob(`POS-backup-${new Date().toISOString().slice(0,10)}.json`,JSON.stringify(state,null,2),'application/json')}
-function restoreBackup(ev){const file=ev.target.files[0];if(!file)return;const r=new FileReader();r.onload=()=>{try{const s=JSON.parse(r.result);if(!s.products||!s.sales)throw new Error('รูปแบบไม่ถูกต้อง');if(confirm('นำเข้าข้อมูลสำรองและแทนที่ข้อมูลปัจจุบัน?')){state={...initialState(),...s,config:normalizeConfig(s.config||{})};saveState();toast('กู้คืนข้อมูลแล้ว');render()}}catch(e){toast('ไฟล์ Backup ไม่ถูกต้อง',true)}ev.target.value=''};r.readAsText(file)}
+function restoreBackup(ev){const file=ev.target.files[0];if(!file)return;const r=new FileReader();r.onload=()=>{try{const s=JSON.parse(r.result);if(!s.products||!s.sales)throw new Error('รูปแบบไม่ถูกต้อง');if(confirm('นำเข้าข้อมูลสำรองและแทนที่ข้อมูลปัจจุบัน?')){state=normalizeLoadedState(s);saveState();toast('กู้คืนข้อมูลแล้ว');render()}}catch(e){toast('ไฟล์ Backup ไม่ถูกต้อง',true)}ev.target.value=''};r.readAsText(file)}
 function csvCell(v){const s=String(v??'');return '"'+s.replace(/"/g,'""')+'"'}
 function exportProducts(){const rows=[['รหัส','ชื่อ','หมวดหมู่','บาร์โค้ด','คำค้น','ผู้ขาย','ราคาขาย','ราคาทุน','สต็อก','จุดเตือน','วันหมดอายุ'],...state.products.map(p=>[p.id,p.name,p.category,p.barcode,p.keywords||'',supplierNameById(p.supplierId),p.price,p.cost,p.stock,p.lowStock,p.expiryDate||''])];downloadBlob('products.csv','\ufeff'+rows.map(r=>r.map(csvCell).join(',')).join('\n'),'text/csv;charset=utf-8')}
 function exportSales(){const rows=[['เลขบิล','วันที่','พนักงาน','วิธีชำระ','ยอดสุทธิ','คืนเงิน','สถานะ','สินค้า'],...state.sales.map(s=>[s.order_number,s.timestamp,s.cashier,methodName(s.payment_method),s.total,saleReturnedAmount(s),s.status,s.items.map(i=>`${i.name} x${i.qty}`).join('; ')])];downloadBlob('sales.csv','\ufeff'+rows.map(r=>r.map(csvCell).join(',')).join('\n'),'text/csv;charset=utf-8')}
-function openDataTools(){if(!requireRole(['owner','manager']))return toast('ไม่มีสิทธิ์จัดการข้อมูล',true);const sc=getSyncCfg(),last=localStorage.getItem(SYNC_CFG_KEY+'_last');modal(`<div class="bg-white rounded-2xl p-6 max-w-2xl mx-auto"><h3 class="text-2xl font-bold mb-2">💾 Backup / Cloud Sync</h3><p class="text-sm text-slate-500 mb-4">${navigator.onLine?'🟢 ออนไลน์':'📴 ออฟไลน์'}${last?' · ซิงก์ล่าสุด '+new Date(last).toLocaleString('th-TH'):''}</p><div class="grid grid-cols-2 gap-3"><button onclick="backupJSON()" class="p-4 rounded-xl bg-indigo-100">⬇️ Backup JSON</button><button onclick="document.getElementById('restoreFile').click()" class="p-4 rounded-xl bg-amber-100">⬆️ Restore JSON</button><button onclick="exportProducts()" class="p-4 rounded-xl bg-emerald-100">📦 Export สินค้า CSV</button><button onclick="exportSales()" class="p-4 rounded-xl bg-sky-100">💰 Export ยอดขาย CSV</button></div><div class="mt-5 border-t pt-4"><h4 class="font-bold mb-2">☁️ Google Sheets Sync</h4><label class="block text-sm mb-2">Apps Script Web App URL<input id="syncUrl" value="${esc(sc.url)}" placeholder="https://script.google.com/macros/s/.../exec" class="w-full border rounded p-2 mt-1"></label><label class="block text-sm mb-2">รหัส Sync<input id="syncToken" type="password" value="${esc(sc.token)}" placeholder="รหัสจากไฟล์ Backend" class="w-full border rounded p-2 mt-1"></label><label class="flex items-center gap-2 text-sm"><input id="syncAuto" type="checkbox" ${sc.auto?'checked':''}> ซิงก์อัตโนมัติทุก 15 วินาทีเมื่อออนไลน์ (ทำงานเบื้องหลัง)</label><div class="grid grid-cols-2 gap-2 mt-3"><button onclick="saveCloudSettings(this)" class="bg-emerald-600 text-white rounded p-2">บันทึกการเชื่อมต่อ</button><button onclick="syncNow(false)" class="bg-indigo-600 text-white rounded p-2">☁️ ซิงก์ตอนนี้</button><button onclick="pullCloudNow()" class="col-span-2 bg-sky-600 text-white rounded p-2">⬇️ ดึงรายการจาก Cloud ลงเครื่องนี้</button></div><div class="mt-3 rounded-lg bg-sky-50 border border-sky-200 p-3 text-xs text-sky-900"><b>อัปเดตอัตโนมัติ:</b> เมื่อเชื่อม Cloud สำเร็จ ทุกเครื่องจะตรวจและซิงก์ข้อมูลทุก 15 วินาที โดยไม่รีเฟรชหน้าขายระหว่างกำลังคิดเงิน<br><b>มือถือ/แท็บเล็ตเครื่องใหม่:</b> ต้องออนไลน์ครั้งแรก → ใส่ URL + รหัส Sync → กด “ดึงรายการจาก Cloud ลงเครื่องนี้” หลังจากดึงสำเร็จ รายการสินค้าจะอยู่ในเครื่องและเปิดใช้งานออฟไลน์ได้</div><p class="text-xs text-amber-700 mt-2">เมื่อออฟไลน์หลายเครื่องพร้อมกัน หลีกเลี่ยงการแก้สินค้า/สต็อกเดียวกันจากหลายเครื่อง แล้วซิงก์พร้อมกัน</p></div><button onclick="closeModal(this)" class="w-full bg-slate-200 rounded p-2 mt-4">ปิด</button></div>`)}
+function activeRecycleItems(){return (state.recycleBin||[]).filter(x=>!x.restoredAt&&!x.purgedAt)}
+function recycleCollectionLabel(k){return ({products:'สินค้า',sales:'ยอดขาย',stockLogs:'ประวัติสต็อก',heldBills:'บิลพัก',promotions:'โปรโมชั่น',members:'สมาชิก',users:'ผู้ใช้',suppliers:'ผู้ขาย',supplierLedger:'เจ้าหนี้',shiftClosures:'ปิดกะ',stockCounts:'ตรวจนับสต็อก',auditLogs:'ประวัติแก้ไข'}[k]||k)}
+function openCloudRecycleBin(){if(!requireRole(['owner']))return toast('ถังขยะสำหรับเจ้าของร้านเท่านั้น',true);const rows=activeRecycleItems().slice(0,300);modal(`<div class="bg-white rounded-2xl p-6 max-w-4xl mx-auto max-h-[92vh] overflow-y-auto"><div class="flex justify-between items-center"><div><h3 class="text-2xl font-bold">🗑️ ถังขยะ Cloud</h3><p class="text-sm text-slate-500">รายการที่ลบจะยังเก็บเป็น Soft Delete และซิงก์ไปทุกเครื่อง จนกว่าจะเรียกกลับ</p></div><button onclick="closeModal(this);openDataTools()" class="text-3xl">×</button></div><div class="mt-4 space-y-2">${rows.map(e=>`<div class="border rounded-xl p-3 flex items-center gap-3"><div class="flex-1"><b>${esc(recycleCollectionLabel(e.collection))}</b><div class="text-sm">${esc(e.record?.name||e.record?.order_number||e.record?.id||e.recordId)}</div><div class="text-xs text-slate-400">ลบ ${new Date(e.deletedAt||e.updatedAt).toLocaleString('th-TH')}</div></div><button onclick="restoreCloudRecycle('${e.id}',this)" class="px-3 py-2 bg-amber-100 text-amber-900 rounded-lg font-bold">↩️ เรียกกลับ</button></div>`).join('')||'<div class="text-center text-slate-400 py-12">ถังขยะว่าง</div>'}</div><button onclick="closeModal(this);openDataTools()" class="w-full bg-slate-200 rounded-xl p-3 mt-4">กลับ</button></div>`)}
+function restoreCloudRecycle(entryId,btn){if(!requireRole(['owner']))return;const e=(state.recycleBin||[]).find(x=>x.id===entryId);if(!e||e.restoredAt||e.purgedAt)return toast('รายการนี้ถูกเรียกกลับแล้ว',true);if(!confirm(`เรียกกลับ ${recycleCollectionLabel(e.collection)} รายการนี้?`))return;const list=Array.isArray(state[e.collection])?state[e.collection]:null;if(!list)return toast('หมวดข้อมูลไม่รองรับ',true);if(!list.some(x=>String(x.id)===String(e.recordId)))list.unshift(JSON.parse(JSON.stringify(e.record)));const now=new Date().toISOString(),dev=getDeviceId();e.restoredAt=now;e.updatedAt=now;e.deviceId=dev;setTombstone(e.collection,e.recordId,false,now,dev);queueSyncChange('recycleBin',e.id,'restore',now);saveState();closeModal(btn);toast('เรียกกลับแล้ว • จะซิงก์ไปทุกเครื่อง');openCloudRecycleBin()}
+async function cloudBackupAction(action){const cfg=getSyncCfg();if(!cfg.url||!cfg.token)return toast('ตั้งค่า Cloud Sync ก่อน',true);if(!navigator.onLine)return toast('ต้องออนไลน์เพื่อสำรอง Cloud',true);try{const res=await fetch(cfg.url,{method:'POST',headers:{'Content-Type':'text/plain;charset=utf-8'},body:JSON.stringify({action,token:cfg.token,deviceId:getDeviceId(),schemaVersion:SYNC_SCHEMA_VERSION})});const data=await res.json();if(!data.ok)throw new Error(data.error||'backup failed');if(data.backupDate)localStorage.setItem(SYNC_CFG_KEY+'_backup_date',data.backupDate);toast(action==='setup_daily_backup'?'✅ เปิดสำรอง Cloud รายวันแล้ว':'✅ สำรอง Cloud แล้ว '+(data.backupDate||''))}catch(e){toast('สำรอง Cloud ไม่สำเร็จ • ตรวจ Backend v6.4 และสิทธิ์ Google Drive',true)}}
+function openDataTools(){if(!requireRole(['owner','manager']))return toast('ไม่มีสิทธิ์จัดการข้อมูล',true);const sc=getSyncCfg(),last=localStorage.getItem(SYNC_CFG_KEY+'_last'),backup=localStorage.getItem(SYNC_CFG_KEY+'_backup_date'),pending=getPendingSyncQueue().length,trash=activeRecycleItems().length;modal(`<div class="bg-white rounded-2xl p-6 max-w-2xl mx-auto"><h3 class="text-2xl font-bold mb-2">💾 Backup / Cloud Database</h3><p class="text-sm text-slate-500 mb-4">${cloudStatusText()}${last?' · ล่าสุด '+new Date(last).toLocaleString('th-TH'):''}</p><div class="grid grid-cols-2 gap-3"><button onclick="backupJSON()" class="p-4 rounded-xl bg-indigo-100">⬇️ Backup JSON</button><button onclick="document.getElementById('restoreFile').click()" class="p-4 rounded-xl bg-amber-100">⬆️ Restore JSON</button><button onclick="exportProducts()" class="p-4 rounded-xl bg-emerald-100">📦 Export สินค้า CSV</button><button onclick="exportSales()" class="p-4 rounded-xl bg-sky-100">💰 Export ยอดขาย CSV</button></div><div class="mt-5 border-t pt-4"><h4 class="font-bold mb-2">☁️ Google Sheets Cloud Database</h4><label class="block text-sm mb-2">Apps Script Web App URL<input id="syncUrl" value="${esc(sc.url)}" placeholder="https://script.google.com/macros/s/.../exec" class="w-full border rounded p-2 mt-1"></label><label class="block text-sm mb-2">รหัส Sync<input id="syncToken" type="password" value="${esc(sc.token)}" placeholder="รหัสจาก Backend v6.4" class="w-full border rounded p-2 mt-1"></label><label class="flex items-center gap-2 text-sm"><input id="syncAuto" type="checkbox" ${sc.auto?'checked':''}> ซิงก์อัตโนมัติ • หลังบันทึกส่งเบื้องหลัง + ตรวจทุก 15 วินาที</label><div class="grid grid-cols-2 gap-2 mt-3"><button onclick="saveCloudSettings(this)" class="bg-emerald-600 text-white rounded p-2">บันทึกการเชื่อมต่อ</button><button onclick="syncNow(false)" class="bg-indigo-600 text-white rounded p-2">☁️ ซิงก์ตอนนี้</button><button onclick="pullCloudNow()" class="col-span-2 bg-sky-600 text-white rounded p-2">⬇️ ดึง Cloud ลงเครื่องนี้</button></div><div class="grid grid-cols-2 gap-2 mt-3"><button onclick="cloudBackupAction('setup_daily_backup')" class="bg-violet-100 text-violet-900 rounded p-2">🕑 เปิดสำรองรายวัน</button><button onclick="cloudBackupAction('backup_now')" class="bg-violet-600 text-white rounded p-2">☁️ สำรองตอนนี้</button><button onclick="closeModal(this);openCloudRecycleBin()" class="col-span-2 bg-amber-100 text-amber-900 rounded p-2">🗑️ ถังขยะ Cloud (${trash})</button></div><div class="mt-3 rounded-lg bg-sky-50 border border-sky-200 p-3 text-xs text-sky-900"><b>โหมดถาวร v6.4:</b> เปิดโปรแกรมแล้วตรวจ Cloud อัตโนมัติ • การขาย/แก้ไขบันทึกในเครื่องก่อนทันที • ออฟไลน์ได้ • ออนไลน์แล้วส่งรายการที่ค้าง • แต่ละรายการมี updatedAt + deviceId • การลบเป็น Soft Delete<br><b>รายการรอส่ง:</b> ${pending} รายการ${backup?` • สำรอง Cloud ล่าสุด ${esc(backup)}`:''}</div><p class="text-xs text-amber-700 mt-2">เครื่องใหม่ยังต้องใส่ URL + รหัส Sync ครั้งแรก 1 ครั้ง เพื่อไม่ฝังรหัสลับไว้ใน GitHub Public</p></div><button onclick="closeModal(this)" class="w-full bg-slate-200 rounded p-2 mt-4">ปิด</button></div>`) }
 
 // -----------------------
 // Bulk select / delete / restore by category
@@ -941,7 +938,7 @@ function openDataResetSettings(){
   if(!requireRole(['owner']))return toast('เมนูนี้สำหรับเจ้าของร้านเท่านั้น',true);
   const trash=getResetTrash(),trashText=trash?`${trash.label||'ข้อมูล'} • ${new Date(trash.savedAt).toLocaleString('th-TH')}`:'ยังไม่มีข้อมูลที่ลบไว้ให้เรียกกลับ';
   modal(`<div class="bg-white rounded-2xl p-6 max-w-2xl mx-auto"><div class="flex justify-between items-center"><div><h3 class="text-2xl font-bold">🧹 รีเซ็ต / ลบข้อมูล</h3><p class="text-sm text-slate-500">เลือกหมวดที่ต้องการลบ ระบบจะถามยืนยันก่อนทุกครั้ง</p></div><button onclick="closeModal(this);openSettings()" class="text-3xl">×</button></div>
-  <div class="mt-4 rounded-xl border border-red-200 bg-red-50 p-3 text-sm text-red-800"><b>สำคัญ:</b> เมื่อลบแล้ว Cloud Sync จะส่งการเปลี่ยนแปลงไปอุปกรณ์อื่นด้วยภายในรอบซิงก์ โดยระบบจะเก็บสำเนาก่อนลบไว้ในเครื่องนี้ 1 ครั้งสำหรับ “เรียกกลับล่าสุด”</div>
+  <div class="mt-4 rounded-xl border border-red-200 bg-red-50 p-3 text-sm text-red-800"><b>สำคัญ:</b> เมื่อลบแล้ว Cloud Sync จะส่งการเปลี่ยนแปลงไปอุปกรณ์อื่นด้วยภายในรอบซิงก์ โดยระบบจะเก็บ Soft Delete ไว้ในถังขยะ Cloud และยังเก็บสำเนาล่าสุดในเครื่องนี้สำหรับ “เรียกกลับล่าสุด”</div>
   <label class="flex items-center gap-3 border rounded-xl p-3 mt-4 bg-slate-50"><input id="resetSelectAll" type="checkbox" class="w-5 h-5" onchange="toggleResetSelectAll(this)"><span class="font-bold">เลือกทั้งหมด</span></label>
   <div class="space-y-2 mt-2">
     <label class="flex items-center gap-3 border rounded-xl p-3"><input data-reset-group="products" type="checkbox" class="w-5 h-5" onchange="updateResetSelectAll()"><span><b>📦 รายการสินค้า / สต็อก</b><br><small class="text-slate-500">${state.products.length} สินค้า • รวมประวัติสต็อก ตรวจนับ และบิลพัก</small></span></label>
@@ -1063,7 +1060,7 @@ function resetCurrentSaleFromSettings(btn){if((cart.length||currentMemberId||cas
 function openCommandSettings(){modal(`<div class="bg-white rounded-2xl p-6 max-w-xl mx-auto"><div class="flex justify-between"><h3 class="text-2xl font-bold">⌨️ คำสั่ง / คีย์ลัด</h3><button onclick="closeModal(this);openSettings()" class="text-3xl">×</button></div><div class="mt-4 divide-y border rounded-xl">${[['Enter','ถ้ามีบาร์โค้ด: เพิ่มสินค้า • ถ้าช่องว่าง: เปิดหน้ารับชำระ'],['F2','เปิดเลือกสินค้า'],['F3','เปิดสมาชิก'],['OK','เมื่อช่องบาร์โค้ดว่าง: เปิดหน้าชำระเงิน แล้วเลือกเงินสดหรือสแกนจ่าย'],['กล้อง','สแกนบาร์โค้ดด้วยกล้อง'],['เริ่มขายใหม่','รีเซ็ตตามค่าที่กำหนดในเมนู เริ่มขายใหม่ / รีเซ็ต']].map(x=>`<div class="p-3"><b>${x[0]}</b><div class="text-sm text-slate-500">${x[1]}</div></div>`).join('')}</div><button onclick="closeModal(this);openSettings()" class="w-full bg-slate-200 rounded p-3 mt-4">กลับเมนูตั้งค่า</button></div>`)}
 function openImageRecognitionSettings(){
   const enabled=state.settings.imageRecognitionEnabled!==false,aiEnabled=state.settings.aiProductRecognitionEnabled!==false,threshold=Math.round(Math.min(.98,Math.max(.6,n(state.settings.imageRecognitionThreshold,.84)))*100),sc=getSyncCfg();
-  modal(`<div class="bg-white rounded-2xl p-6 max-w-xl mx-auto"><div class="flex justify-between"><h3 class="text-2xl font-bold">🧠 วิเคราะห์สินค้าจากรูป</h3><button onclick="closeModal(this);openSettings()" class="text-3xl">×</button></div><div class="bg-indigo-50 text-indigo-900 rounded-xl p-3 text-sm mt-4"><b>2 ชั้น:</b> ระบบจะลองจำสินค้าเดิมในเครื่องก่อน หากไม่พบและมีอินเทอร์เน็ต จะส่งรูปไป AI เพื่ออ่านฉลากและกรอกชื่อสินค้าอัตโนมัติ</div><label class="flex items-center gap-3 border rounded-xl p-3 mt-3"><input id="imgRecEnabled" type="checkbox" ${enabled?'checked':''} class="w-5 h-5"><span><b>จำสินค้าเดิมจากรูป</b><br><small class="text-slate-500">ทำงานออฟไลน์</small></span></label><label class="flex items-center gap-3 border rounded-xl p-3 mt-3"><input id="aiRecEnabled" type="checkbox" ${aiEnabled?'checked':''} class="w-5 h-5"><span><b>✨ AI วิเคราะห์สินค้าใหม่และกรอกชื่ออัตโนมัติ</b><br><small class="text-slate-500">ต้องออนไลน์ + Backend v5.2 + Gemini API Key</small></span></label><label class="block mt-3 font-bold">ความมั่นใจขั้นต่ำสำหรับจับคู่สินค้าเดิม <span id="imgRecThresholdText">${threshold}%</span><input id="imgRecThreshold" type="range" min="60" max="98" value="${threshold}" class="w-full" oninput="document.getElementById('imgRecThresholdText').textContent=this.value+'%'"></label><div class="mt-3 text-xs rounded-lg p-3 ${sc.url&&sc.token?'bg-emerald-50 text-emerald-800':'bg-amber-50 text-amber-800'}">${sc.url&&sc.token?'☁️ ตั้งค่า Cloud URL + รหัส Sync แล้ว':'⚠️ ยังไม่ได้ตั้ง Cloud URL / รหัส Sync — AI จะยังส่งรูปไปวิเคราะห์ไม่ได้'}</div><button onclick="saveImageRecognitionSettings(this)" class="w-full mt-4 text-white rounded-xl p-3" style="background:${state.config.primary_action_color}">บันทึก</button><button onclick="closeModal(this);openSettings()" class="w-full bg-slate-200 rounded p-2 mt-3">กลับเมนูตั้งค่า</button></div>`)
+  modal(`<div class="bg-white rounded-2xl p-6 max-w-xl mx-auto"><div class="flex justify-between"><h3 class="text-2xl font-bold">🧠 วิเคราะห์สินค้าจากรูป</h3><button onclick="closeModal(this);openSettings()" class="text-3xl">×</button></div><div class="bg-indigo-50 text-indigo-900 rounded-xl p-3 text-sm mt-4"><b>2 ชั้น:</b> ระบบจะลองจำสินค้าเดิมในเครื่องก่อน หากไม่พบและมีอินเทอร์เน็ต จะส่งรูปไป AI เพื่ออ่านฉลากและกรอกชื่อสินค้าอัตโนมัติ</div><label class="flex items-center gap-3 border rounded-xl p-3 mt-3"><input id="imgRecEnabled" type="checkbox" ${enabled?'checked':''} class="w-5 h-5"><span><b>จำสินค้าเดิมจากรูป</b><br><small class="text-slate-500">ทำงานออฟไลน์</small></span></label><label class="flex items-center gap-3 border rounded-xl p-3 mt-3"><input id="aiRecEnabled" type="checkbox" ${aiEnabled?'checked':''} class="w-5 h-5"><span><b>✨ AI วิเคราะห์สินค้าใหม่และกรอกชื่ออัตโนมัติ</b><br><small class="text-slate-500">ต้องออนไลน์ + Backend v6.4 + Gemini API Key (ถ้าเปิดใช้ AI)</small></span></label><label class="block mt-3 font-bold">ความมั่นใจขั้นต่ำสำหรับจับคู่สินค้าเดิม <span id="imgRecThresholdText">${threshold}%</span><input id="imgRecThreshold" type="range" min="60" max="98" value="${threshold}" class="w-full" oninput="document.getElementById('imgRecThresholdText').textContent=this.value+'%'"></label><div class="mt-3 text-xs rounded-lg p-3 ${sc.url&&sc.token?'bg-emerald-50 text-emerald-800':'bg-amber-50 text-amber-800'}">${sc.url&&sc.token?'☁️ ตั้งค่า Cloud URL + รหัส Sync แล้ว':'⚠️ ยังไม่ได้ตั้ง Cloud URL / รหัส Sync — AI จะยังส่งรูปไปวิเคราะห์ไม่ได้'}</div><button onclick="saveImageRecognitionSettings(this)" class="w-full mt-4 text-white rounded-xl p-3" style="background:${state.config.primary_action_color}">บันทึก</button><button onclick="closeModal(this);openSettings()" class="w-full bg-slate-200 rounded p-2 mt-3">กลับเมนูตั้งค่า</button></div>`)
 }
 function saveImageRecognitionSettings(btn){state.settings={...state.settings,imageRecognitionEnabled:!!document.getElementById('imgRecEnabled')?.checked,aiProductRecognitionEnabled:!!document.getElementById('aiRecEnabled')?.checked,imageRecognitionThreshold:Math.min(.98,Math.max(.6,n(document.getElementById('imgRecThreshold')?.value,84)/100))};saveState();closeModal(btn);toast('บันทึกการวิเคราะห์สินค้าจากรูปแล้ว');openSettings()}
 
@@ -1106,7 +1103,7 @@ function printLabel(id){const p=state.products.find(x=>x.id===id);if(!p)return;l
 // -----------------------
 // Main rendering
 // -----------------------
-function nav(){const tabs=[['dashboard','🏠','หน้าแรก'],['pos','🛒','ขายสินค้า'],['products','📦','สินค้า/สต็อก'],['promoProducts','🔥','สินค้าโปรโมชั่น'],['sales','🧾','บิลย้อนหลัง'],['statistics','📈','สถิติ/กำไร'],['labels','🏷️','ป้ายราคา']];return `<div class="sticky top-0 z-30 bg-white border-b shadow-sm"><div class="max-w-7xl mx-auto px-3 py-2 flex gap-2 items-center"><div class="flex-1 flex gap-1 overflow-x-auto scrollbar-thin">${tabs.map(t=>`<button onclick="activeTab='${t[0]}';menuOpen=false;render()" class="px-3 py-2 rounded-lg whitespace-nowrap font-semibold ${activeTab===t[0]?'text-white':''}" style="background:${activeTab===t[0]?state.config.primary_action_color:'transparent'}">${t[1]} ${t[2]}</button>`).join('')}</div><button onclick="syncNow(false)" class="px-2 py-2 rounded-lg ${navigator.onLine?'bg-emerald-50':'bg-slate-200'}" title="${cloudStatusText()}">${navigator.onLine?'☁️':'📴'}</button><div class="hidden md:block text-right px-2"><div class="text-xs text-slate-400">เข้าใช้งานโดย</div><div class="font-semibold text-sm">👤 ${esc(currentUser?.name||'')}</div></div><div class="relative"><button onclick="menuOpen=!menuOpen;render()" class="px-3 py-2 rounded-lg bg-slate-100">☰</button><div class="${menuOpen?'block':'hidden'} absolute right-0 bg-white shadow-xl border rounded-xl w-60 p-2">${requireRole(['owner','manager'])?`<button onclick="menuOpen=false;openSettings()" class="w-full text-left p-3 hover:bg-slate-100 rounded font-bold">⚙️ ตั้งค่าทั้งหมด</button>`:''}<div class="px-2 py-2 text-xs ${navigator.onLine?'text-emerald-600':'text-slate-500'} border-t mt-1">${cloudStatusText()}</div><div class="md:hidden px-2 py-2 text-xs text-slate-500">👤 ${esc(currentUser?.name||'')}</div><button onclick="logout()" class="w-full text-left p-2 hover:bg-red-50 text-red-600 rounded">🚪 ออกจากระบบ</button></div></div></div></div>`}
+function nav(){const tabs=[['dashboard','🏠','หน้าแรก'],['pos','🛒','ขายสินค้า'],['products','📦','สินค้า/สต็อก'],['promoProducts','🔥','สินค้าโปรโมชั่น'],['sales','🧾','บิลย้อนหลัง'],['statistics','📈','สถิติ/กำไร'],['labels','🏷️','ป้ายราคา']];return `<div class="sticky top-0 z-30 bg-white border-b shadow-sm"><div class="max-w-7xl mx-auto px-3 py-2 flex gap-2 items-center"><div class="flex-1 flex gap-1 overflow-x-auto scrollbar-thin">${tabs.map(t=>`<button onclick="activeTab='${t[0]}';menuOpen=false;render()" class="px-3 py-2 rounded-lg whitespace-nowrap font-semibold ${activeTab===t[0]?'text-white':''}" style="background:${activeTab===t[0]?state.config.primary_action_color:'transparent'}">${t[1]} ${t[2]}</button>`).join('')}</div><button onclick="syncNow(false)" class="px-2 py-2 rounded-lg ${navigator.onLine?(getPendingSyncQueue().length?'bg-amber-50':'bg-emerald-50'):'bg-slate-200'}" title="${cloudStatusText()}">${navigator.onLine?(getPendingSyncQueue().length?'☁️'+getPendingSyncQueue().length:'☁️'):'📴'}</button><div class="hidden md:block text-right px-2"><div class="text-xs text-slate-400">เข้าใช้งานโดย</div><div class="font-semibold text-sm">👤 ${esc(currentUser?.name||'')}</div></div><div class="relative"><button onclick="menuOpen=!menuOpen;render()" class="px-3 py-2 rounded-lg bg-slate-100">☰</button><div class="${menuOpen?'block':'hidden'} absolute right-0 bg-white shadow-xl border rounded-xl w-60 p-2">${requireRole(['owner','manager'])?`<button onclick="menuOpen=false;openSettings()" class="w-full text-left p-3 hover:bg-slate-100 rounded font-bold">⚙️ ตั้งค่าทั้งหมด</button>`:''}<div class="px-2 py-2 text-xs ${navigator.onLine?'text-emerald-600':'text-slate-500'} border-t mt-1">${cloudStatusText()}</div><div class="md:hidden px-2 py-2 text-xs text-slate-500">👤 ${esc(currentUser?.name||'')}</div><button onclick="logout()" class="w-full text-left p-2 hover:bg-red-50 text-red-600 rounded">🚪 ออกจากระบบ</button></div></div></div></div>`}
 function render(){deferredCloudRender=false;const device=applyDeviceProfile();if(state.settings.requireLogin&&!currentUser)return loginScreen();const app=document.getElementById('app');app.style.background=state.config.background_color;const body=activeTab==='dashboard'?renderDashboard():activeTab==='pos'?renderPOS():activeTab==='products'?renderProducts():activeTab==='promoProducts'?renderProductPromotions():activeTab==='sales'?renderSales():activeTab==='statistics'?renderStats():renderLabels();const mainClass=activeTab==='pos'?'w-full p-1':(device.mode==='mobile'?'w-full p-2':'max-w-7xl mx-auto p-4');app.innerHTML=`${nav()}<main class="${mainClass}">${body}</main>`;if(activeTab==='statistics')setTimeout(drawStats,50);updateCustomerDisplay()}
 function renderDashboard(){
   const st=stats(),low=state.products.filter(p=>p.stock<=n(p.lowStock,state.config.low_stock_default)).length,exp=state.products.filter(p=>['warn','expired'].includes(expiryInfo(p).level)).length,payable=state.suppliers.reduce((a,x)=>a+Math.max(0,supplierBalance(x.id)),0),shift=shiftMetrics();
