@@ -11,7 +11,7 @@
   <link rel="manifest" href="./manifest.webmanifest">
   <link rel="icon" href="./icons/icon-192.png" sizes="192x192">
   <link rel="apple-touch-icon" href="./icons/icon-192.png">
-  <title>ระบบ POS ร้านรัตนาพานิชย์ - PWA v6.18.4</title>
+  <title>ระบบ POS ร้านรัตนาพานิชย์ - PWA v6.18.6</title>
   <script src="https://cdn.tailwindcss.com"></script>
   <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
   <script src="https://unpkg.com/html5-qrcode@2.3.8/html5-qrcode.min.js"></script>
@@ -320,6 +320,32 @@ function userPermissionMap(u=permissionUser()){
 }
 function hasPermission(key){const u=permissionUser();if(!u)return false;if(ownerReportOnlyMode())return ['viewReports','viewSalesHistory','viewAudit'].includes(key);return !!(u.role==='owner'||userPermissionMap(u)[key]===true)}
 function requirePermission(key,msg='ไม่มีสิทธิ์ใช้งานเมนูนี้'){if(hasPermission(key))return true;toast(msg,true);return false}
+function closeAllAppModals(){document.querySelectorAll('.app-modal-root').forEach(x=>x.remove());syncModalScrollLock()}
+function canOpenStoreCenter(){
+  if(!currentUser)return false;
+  if(currentUser.role==='owner'||currentUser.role==='manager')return true;
+  return ['manageMembers','manageSuppliers','managePurchaseOrders','manageExpenses','manageReceivables','manageBankTransfers','stockCount','shiftClose','viewReports','viewAudit','viewCostHistory','printLabels','dataTools','systemSettings'].some(k=>hasPermission(k));
+}
+function openStoreModule(key,src=null){
+  const tabRoutes={products:'products',promoProducts:'promoProducts',sales:'sales',statistics:'statistics',labels:'labels',pos:'pos'};
+  const permissionRoutes={stockCount:'stockCount',suppliers:'manageSuppliers',purchaseOrders:'managePurchaseOrders',deadStock:'viewReports',costHistory:'viewCostHistory',inventoryHistory:'viewAudit',returnCenter:'returnSale',accountingExport:'viewReports',bankTransfers:'manageBankTransfers',expenses:'manageExpenses',receivables:'manageReceivables',shiftClose:'shiftClose',dayClose:'shiftClose',dailyReport:'viewReports',taxReport:'viewReports',monthlyTax:'viewReports',users:'manageUsers',auditLogs:'viewAudit',loginHistory:'viewAudit',restorePoints:'dataTools',dataTools:'dataTools',dataReset:'resetData',members:'manageMembers'};
+  const perm=permissionRoutes[key];
+  if(perm&&!hasPermission(perm))return toast('ไม่มีสิทธิ์เปิดเมนูนี้',true);
+  if(tabRoutes[key]){
+    const tab=tabRoutes[key];
+    if(!tabAllowed(tab))return toast('ไม่มีสิทธิ์เปิดเมนูนี้',true);
+    closeAllAppModals();activeTab=tab;menuOpen=false;lastRenderedTab='';render();return;
+  }
+  const routes={
+    stockCount:()=>openStockCount(),suppliers:()=>openSuppliers(),purchaseOrders:()=>openPurchaseOrders(),deadStock:()=>openDeadStockReport(30),costHistory:()=>openCostHistory(),inventoryHistory:()=>openInventoryHistory(),
+    storeSettings:()=>openStoreSettings(),discountSettings:()=>openDiscountSettings(),members:()=>openMembersSettings(),memberPoints:()=>openMemberPointsSettings(),customerDisplay:()=>openCustomerDisplay(),newSaleReset:()=>openNewSaleResetSettings(),commandSettings:()=>openCommandSettings(),imageRecognition:()=>openImageRecognitionSettings(),
+    returnCenter:()=>openReturnCenter(),accountingExport:()=>openAccountingExport(),bankTransfers:()=>openBankTransfers(),expenses:()=>openExpenses(),receivables:()=>openReceivables(),shiftClose:()=>openShiftClose(),dayClose:()=>openDayClose(),dailyReport:()=>openDailyReport(),taxReport:()=>openTaxReport(),monthlyTax:()=>openMonthlyTaxSummary(),taxReview:()=>openTaxAssignmentReview(),
+    approvalSettings:()=>openApprovalSettings(),users:()=>openUsers(),permissionSettings:()=>openPermissionSettings(),auditLogs:()=>openAuditLogs(),loginHistory:()=>openLoginHistory(),anomalyCheck:()=>openDataAnomalyCheck(),recycleBin:()=>openCentralRecycleBin(),
+    restorePoints:()=>openRestorePoints(30),dataTools:()=>openDataTools(),frontAlerts:()=>openFrontAlerts(),systemHealth:()=>openSystemHealth(),printerSettings:()=>openPrinterSettings(),deviceSettings:()=>openDeviceSettings(),installPWA:()=>installPWA(),dataReset:()=>openDataResetSettings()
+  };
+  const fn=routes[key];if(!fn)return toast('ไม่พบเมนูที่เลือก',true);
+  closeAllAppModals();requestAnimationFrame(()=>fn());
+}
 function roleName(r){return r==='owner'?'เจ้าของร้าน':r==='manager'?'ผู้จัดการ':'แคชเชียร์'}
 function methodName(m){return m==='cash'?'เงินสด':m==='card'?'บัตร':m==='qr'?'QR Code':'เครดิต'}
 function documentPrefix(type){return ({sale:'SAL',return:'RET',po:'PO',receive:'GRN',expense:'EXP',transfer:'TRF',dayclose:'CLS'}[type]||'DOC')}
@@ -1351,67 +1377,67 @@ function toggleSettingsFullscreen(btn){
   }
 }
 function openSettings(){
-  if(!requirePermission('systemSettings','ไม่มีสิทธิ์เปิดการตั้งค่าระบบ'))return;
-  const exp=state.products.filter(p=>{const x=expiryInfo(p);return x.level==='expired'||x.level==='warn'}).length,payable=state.suppliers.reduce((a,x)=>a+Math.max(0,supplierBalance(x.id)),0);
-  const section=(icon,title,desc,tone,body,open=true)=>`<details ${open?'open':''} class="rounded-2xl border ${tone} overflow-hidden bg-white"><summary class="cursor-pointer select-none px-4 py-3 font-bold text-lg flex items-center justify-between gap-3 bg-slate-50"><span>${icon} ${title}</span><span class="text-xs font-normal text-slate-500">${desc}</span></summary><div class="grid sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-3 p-3">${body}</div></details>`;
-  const card=(onclick,icon,title,desc,hover='hover:bg-slate-50',extra='')=>`<button onclick="${onclick}" class="text-left border rounded-2xl p-4 ${hover} min-h-[118px] h-full flex flex-col ${extra}"><div class="text-3xl leading-none">${icon}</div><b class="mt-2">${title}</b><div class="text-xs text-slate-500 mt-1 leading-relaxed">${desc}</div></button>`;
+  if(!canOpenStoreCenter())return toast('ไม่มีเมนูจัดการร้านที่คุณมีสิทธิ์ใช้งาน',true);
+  const exp=state.products.filter(p=>{const x=expiryInfo(p);return x.level==='expired'||x.level==='warn'}).length,payable=state.suppliers.reduce((a,x)=>a+Math.max(0,supplierBalance(x.id)),0),canSystem=hasPermission('systemSettings'),managerLevel=requireRole(['owner','manager']);
+  const section=(icon,title,desc,tone,body,open=true)=>String(body||'').trim()?`<details ${open?'open':''} class="rounded-2xl border ${tone} overflow-hidden bg-white"><summary class="cursor-pointer select-none px-4 py-3 font-bold text-lg flex items-center justify-between gap-3 bg-slate-50"><span>${icon} ${title}</span><span class="text-xs font-normal text-slate-500">${desc}</span></summary><div class="grid sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-3 p-3">${body}</div></details>`:'';
+  const card=(key,icon,title,desc,hover='hover:bg-slate-50',extra='')=>`<button onclick="openStoreModule('${key}',this)" class="text-left border rounded-2xl p-4 ${hover} min-h-[118px] h-full flex flex-col ${extra}"><div class="text-3xl leading-none">${icon}</div><b class="mt-2">${title}</b><div class="text-xs text-slate-500 mt-1 leading-relaxed">${desc}</div></button>`;
   const shopSale=[
-    card("closeModal(this);openStoreSettings()",'🏪','ร้าน / โลโก้ / พร้อมเพย์','ชื่อร้าน โลโก้ สาขา โทรศัพท์ QR และค่าสต็อก'),
-    card("closeModal(this);openDiscountSettings()",'🏷️','ส่วนลด / โปรโมชั่น','ตั้งส่วนลดและโปรโมชั่นหน้าร้าน','hover:bg-rose-50'),
-    card("closeModal(this);openMembersSettings()",'🧑‍🤝‍🧑',`สมาชิก (${state.members.length})`,'สมัคร ค้นหา และแก้ไขสมาชิก','hover:bg-emerald-50'),
-    card("closeModal(this);openMemberPointsSettings()",'⭐','แต้มสมาชิก','กำหนดการสะสมและแลกแต้ม','hover:bg-amber-50'),
-    card("closeModal(this);openCustomerDisplay()",'🖥️','จอลูกค้า','จอที่สอง แสดงรายการ ยอดรวม และ QR','hover:bg-blue-50'),
-    card("closeModal(this);openNewSaleResetSettings()",'🔄','เริ่มขายใหม่ / รีเซ็ต','กำหนดสิ่งที่จะล้างเมื่อเริ่มบิลใหม่','hover:bg-amber-50'),
-    card("closeModal(this);openCommandSettings()",'⌨️','เมนูหน้าขาย / คีย์ลัด','เพิ่ม/ซ่อนเมนู และตั้ง F1–F12','hover:bg-indigo-50')
+    managerLevel?card('storeSettings','🏪','ร้าน / โลโก้ / พร้อมเพย์','ชื่อร้าน โลโก้ สาขา โทรศัพท์ QR และค่าสต็อก'):'',
+    managerLevel?card('discountSettings','🏷️','ส่วนลด / โปรโมชั่น','ตั้งส่วนลดและโปรโมชั่นหน้าร้าน','hover:bg-rose-50'):'',
+    hasPermission('manageMembers')?card('members','🧑‍🤝‍🧑',`สมาชิก (${state.members.length})`,'สมัคร ค้นหา และแก้ไขสมาชิก','hover:bg-emerald-50'):'',
+    managerLevel?card('memberPoints','⭐','แต้มสมาชิก','กำหนดการสะสมและแลกแต้ม','hover:bg-amber-50'):'',
+    hasPermission('sell')?card('customerDisplay','🖥️','จอลูกค้า','จอที่สอง แสดงรายการ ยอดรวม และ QR','hover:bg-blue-50'):'',
+    canSystem?card('newSaleReset','🔄','เริ่มขายใหม่ / รีเซ็ต','กำหนดสิ่งที่จะล้างเมื่อเริ่มบิลใหม่','hover:bg-amber-50'):'',
+    canSystem?card('commandSettings','⌨️','เมนูหน้าขาย / คีย์ลัด','เพิ่ม/ซ่อนเมนู และตั้ง F1–F12','hover:bg-indigo-50'):''
   ].join('');
   const stockPurchase=[
-    hasPermission('viewReports')?card("closeModal(this);openDeadStockReport(30)",'🐢','สินค้าค้างสต็อก','ไม่ขาย 30 / 60 / 90 วัน • ดูทุนที่จม','hover:bg-amber-50'):'',
-    card("closeModal(this);openSuppliers()",'🚚','ผู้ขาย / เจ้าหนี้',`${state.suppliers.length} ผู้ขาย • ค้าง ${money(payable)}`,'hover:bg-amber-50'),
-    hasPermission('managePurchaseOrders')?card("closeModal(this);openPurchaseOrders()",'🛒','ใบสั่งซื้อ PO / รับสินค้า','สั่งซื้อ • รับเข้า • ต้นทุนเฉลี่ย • เจ้าหนี้','hover:bg-emerald-50'):'',
-    card("closeModal(this);openStockCount()",'📋','เช็กสต็อกจริง','นับของจริงและปรับส่วนต่างอัตโนมัติ','hover:bg-indigo-50'),
-    hasPermission('viewCostHistory')?card("closeModal(this);openCostHistory()",'📚','ประวัติต้นทุน','ราคาทุนเก่า → ใหม่ และแหล่งที่มา','hover:bg-cyan-50'):'',
-    hasPermission('viewAudit')?card("closeModal(this);openInventoryHistory()",'📜','ประวัติสินค้า / รับเข้า','วันที่รับ • ผู้รับ • ผู้ลงรายละเอียด • PO / เครื่อง','hover:bg-emerald-50'):'',
-    card("closeModal(this);activeTab='products';render()",'⏰','วันหมดอายุ',`มี ${exp} รายการที่หมดอายุ/ใกล้หมดอายุ`,'hover:bg-orange-50'),
-    card("closeModal(this);openImageRecognitionSettings()",'🧠','จำสินค้าจากรูป','ช่วยจำสินค้าเดิมจากรูปที่เคยบันทึก','hover:bg-sky-50')
+    hasPermission('viewReports')?card('deadStock','🐢','สินค้าค้างสต็อก','ไม่ขาย 30 / 60 / 90 วัน • ดูทุนที่จม','hover:bg-amber-50'):'',
+    hasPermission('manageSuppliers')?card('suppliers','🚚','ผู้ขาย / เจ้าหนี้',`${state.suppliers.length} ผู้ขาย • ค้าง ${money(payable)}`,'hover:bg-amber-50'):'',
+    hasPermission('managePurchaseOrders')?card('purchaseOrders','🛒','ใบสั่งซื้อ PO / รับสินค้า','สั่งซื้อ • รับเข้า • ต้นทุนเฉลี่ย • เจ้าหนี้','hover:bg-emerald-50'):'',
+    hasPermission('stockCount')?card('stockCount','📋','เช็กสต็อกจริง','นับของจริงและปรับส่วนต่างอัตโนมัติ','hover:bg-indigo-50'):'',
+    hasPermission('viewCostHistory')?card('costHistory','📚','ประวัติต้นทุน','ราคาทุนเก่า → ใหม่ และแหล่งที่มา','hover:bg-cyan-50'):'',
+    hasPermission('viewAudit')?card('inventoryHistory','📜','ประวัติสินค้า / รับเข้า','วันที่รับ • ผู้รับ • ผู้ลงรายละเอียด • PO / เครื่อง','hover:bg-emerald-50'):'',
+    tabAllowed('products')?card('products','⏰','สินค้า / วันหมดอายุ',`มี ${exp} รายการที่หมดอายุ/ใกล้หมดอายุ`,'hover:bg-orange-50'):'',
+    canSystem?card('imageRecognition','🧠','จำสินค้าจากรูป','ช่วยจำสินค้าเดิมจากรูปที่เคยบันทึก','hover:bg-sky-50'):''
   ].join('');
   const financeTax=[
-    hasPermission('returnSale')?card("closeModal(this);openReturnCenter()",'↩️','คืนสินค้าอ้างอิงบิล','ค้นบิลเดิม • คืนบางชิ้น • สต็อกกลับอัตโนมัติ','hover:bg-red-50'):'',
-    hasPermission('viewReports')?card("closeModal(this);openAccountingExport()",'📤','Export สำหรับบัญชี','รายวัน/รายเดือน • VAT • ค่าใช้จ่าย • ลูกหนี้ • ค่าบริการ','hover:bg-emerald-50'):'',
-    hasPermission('manageBankTransfers')?card("closeModal(this);openBankTransfers()",'🏦','โอนเงินธนาคาร','ธนาคารปลายทาง • ยอดโอน • ค่าบริการ • ประวัติ','hover:bg-sky-50'):'',
-    hasPermission('manageExpenses')?card("closeModal(this);openExpenses()",'💸','ค่าใช้จ่ายร้าน','ค่าไฟ ค่าน้ำ ขนส่ง เบิกเงิน และค่าใช้จ่ายอื่น','hover:bg-rose-50'):'',
-    hasPermission('manageReceivables')?card("closeModal(this);openReceivables()",'📒','ลูกหนี้ / ขายเชื่อ','วงเงิน • ยอดค้าง • รับชำระบางส่วน','hover:bg-amber-50'):'',
-    card("closeModal(this);openShiftClose()",'🧮','ปิดยอด / ปิดกะ','สรุปเงินสด QR คืนเงิน ส่วนลด และกำไร','hover:bg-emerald-50'),
-    card("closeModal(this);openDayClose()",'🔒','ปิดวัน / ล็อกยอด','สรุปยอด • ตรวจภาษี • ล็อกบิล • ซิงก์ Cloud','hover:bg-emerald-50','border-2 border-emerald-200'),
-    hasPermission('viewReports')?card("closeModal(this);openDailyReport()",'📊','รายงานประจำวัน','ยอดขาย • VAT/ยกเว้น VAT • กำไรสุทธิ • ค่าใช้จ่าย','hover:bg-teal-50'):'',
-    card("closeModal(this);activeTab='statistics';render()",'📈','กำไรจริงจากการขาย','หลังส่วนลด/คืนสินค้า แยกวัน เดือน และสินค้า','hover:bg-teal-50'),
-    hasPermission('viewReports')?card("closeModal(this);openTaxReport()",'🧾','ภาษีสินค้า / สรรพากร','VAT • ยกเว้น • ยังไม่กำหนด • รายงานและ CSV','hover:bg-emerald-50'):'',
-    hasPermission('viewReports')?card("closeModal(this);openMonthlyTaxSummary()",'📅','สรุปภาษีรายเดือน','รวมยอดรายวันสำหรับบัญชีและตรวจ VAT','hover:bg-sky-50'):'',
-    requireRole(['owner','manager'])?card("closeModal(this);openTaxAssignmentReview()",'🔎',`ตรวจภาษีสินค้า (${unassignedProducts().length})`,'กำหนด VAT / ยกเว้น VAT ให้สินค้าที่ยังไม่กำหนด','hover:bg-amber-50'):''
+    hasPermission('returnSale')?card('returnCenter','↩️','คืนสินค้าอ้างอิงบิล','ค้นบิลเดิม • คืนบางชิ้น • สต็อกกลับอัตโนมัติ','hover:bg-red-50'):'',
+    hasPermission('viewReports')?card('accountingExport','📤','Export สำหรับบัญชี','รายวัน/รายเดือน • VAT • ค่าใช้จ่าย • ลูกหนี้ • ค่าบริการ','hover:bg-emerald-50'):'',
+    hasPermission('manageBankTransfers')?card('bankTransfers','🏦','โอนเงินธนาคาร','ธนาคารปลายทาง • ยอดโอน • ค่าบริการ • ประวัติ','hover:bg-sky-50'):'',
+    hasPermission('manageExpenses')?card('expenses','💸','ค่าใช้จ่ายร้าน','ค่าไฟ ค่าน้ำ ขนส่ง เบิกเงิน และค่าใช้จ่ายอื่น','hover:bg-rose-50'):'',
+    hasPermission('manageReceivables')?card('receivables','📒','ลูกหนี้ / ขายเชื่อ','วงเงิน • ยอดค้าง • รับชำระบางส่วน','hover:bg-amber-50'):'',
+    hasPermission('shiftClose')?card('shiftClose','🧮','ปิดยอด / ปิดกะ','สรุปเงินสด QR คืนเงิน ส่วนลด และกำไร','hover:bg-emerald-50'):'',
+    hasPermission('shiftClose')?card('dayClose','🔒','ปิดวัน / ล็อกยอด','สรุปยอด • ตรวจภาษี • ล็อกบิล • ซิงก์ Cloud','hover:bg-emerald-50','border-2 border-emerald-200'):'',
+    hasPermission('viewReports')?card('dailyReport','📊','รายงานประจำวัน','ยอดขาย • VAT/ยกเว้น VAT • กำไรสุทธิ • ค่าใช้จ่าย','hover:bg-teal-50'):'',
+    hasPermission('viewReports')?card('statistics','📈','กำไรจริงจากการขาย','หลังส่วนลด/คืนสินค้า แยกวัน เดือน และสินค้า','hover:bg-teal-50'):'',
+    hasPermission('viewReports')?card('taxReport','🧾','ภาษีสินค้า / สรรพากร','VAT • ยกเว้น • ยังไม่กำหนด • รายงานและ CSV','hover:bg-emerald-50'):'',
+    hasPermission('viewReports')?card('monthlyTax','📅','สรุปภาษีรายเดือน','รวมยอดรายวันสำหรับบัญชีและตรวจ VAT','hover:bg-sky-50'):'',
+    managerLevel?card('taxReview','🔎',`ตรวจภาษีสินค้า (${unassignedProducts().length})`,'กำหนด VAT / ยกเว้น VAT ให้สินค้าที่ยังไม่กำหนด','hover:bg-amber-50'):''
   ].join('');
   const security=[
-    requireRole(['owner'])?card("closeModal(this);openApprovalSettings()",'🔐','PIN อนุมัติรายการสำคัญ','ส่วนลด • คืนเงิน • สต็อก • ต่ำกว่าทุน • เกินวงเงิน','hover:bg-violet-50'):'',
-    hasPermission('manageUsers')?card("closeModal(this);openUsers()",'👥','ผู้ใช้งานและ PIN','เจ้าของร้าน ผู้จัดการ และแคชเชียร์'):'',
-    requireRole(['owner'])?card("closeModal(this);openPermissionSettings()",'🛡️','สิทธิ์พนักงานละเอียด','กำหนดสิทธิ์แยกรายคน และซิงก์ทุกอุปกรณ์','hover:bg-violet-50'):'',
-    card("closeModal(this);openAuditLogs()",'🕵️','ประวัติการแก้ไข','ใครลดราคา ยกเลิกบิล ปรับสต็อก และเวลาใด'),
-    hasPermission('viewAudit')?card("closeModal(this);openLoginHistory()",'🕒','ประวัติเข้าใช้งาน','ใครเข้าเครื่องไหน เวลาไหน และทำรายการอะไร','hover:bg-indigo-50'):'',
-    card("closeModal(this);openDataAnomalyCheck()",'🔍','ตรวจข้อมูลผิดปกติ','บาร์โค้ดซ้ำ • ชื่อซ้ำ • ขายต่ำกว่าทุน • สต็อกติดลบ','hover:bg-red-50'),
-    requireRole(['owner'])?card("closeModal(this);openCentralRecycleBin()",'🗑️',`ถังขยะกลาง (${activeRecycleItems().length})`,'ดูและเรียกกลับรายการที่ลบจากทุกอุปกรณ์','hover:bg-amber-50'):''
+    requireRole(['owner'])?card('approvalSettings','🔐','PIN อนุมัติรายการสำคัญ','ส่วนลด • คืนเงิน • สต็อก • ต่ำกว่าทุน • เกินวงเงิน','hover:bg-violet-50'):'',
+    hasPermission('manageUsers')?card('users','👥','ผู้ใช้งานและ PIN','เจ้าของร้าน ผู้จัดการ และแคชเชียร์'):'',
+    requireRole(['owner'])?card('permissionSettings','🛡️','สิทธิ์พนักงานละเอียด','กำหนดสิทธิ์แยกรายคน และซิงก์ทุกอุปกรณ์','hover:bg-violet-50'):'',
+    hasPermission('viewAudit')?card('auditLogs','🕵️','ประวัติการแก้ไข','ใครลดราคา ยกเลิกบิล ปรับสต็อก และเวลาใด'):'',
+    hasPermission('viewAudit')?card('loginHistory','🕒','ประวัติเข้าใช้งาน','ใครเข้าเครื่องไหน เวลาไหน และทำรายการอะไร','hover:bg-indigo-50'):'',
+    canSystem?card('anomalyCheck','🔍','ตรวจข้อมูลผิดปกติ','บาร์โค้ดซ้ำ • ชื่อซ้ำ • ขายต่ำกว่าทุน • สต็อกติดลบ','hover:bg-red-50'):'',
+    requireRole(['owner'])?card('recycleBin','🗑️',`ถังขยะกลาง (${activeRecycleItems().length})`,'ดูและเรียกกลับรายการที่ลบจากทุกอุปกรณ์','hover:bg-amber-50'):''
   ].join('');
   const system=[
-    hasPermission('dataTools')?card("closeModal(this);openRestorePoints(30)",'🛟','จุดกู้คืน 7/30 วัน','สำรองอัตโนมัติรายวัน • ย้อนกลับเมื่อแก้/ลบผิด','hover:bg-amber-50'):'',
-    hasPermission('dataTools')?card("closeModal(this);openDataTools()",'☁️','ข้อมูล / Backup / Cloud','สำรอง กู้คืน Export และ Google Sheets'):'',
-    card("closeModal(this);openFrontAlerts()",'🔔',`แจ้งเตือนหน้าร้าน (${frontAlertCount()})`,'สต็อก • หมดอายุ • Cloud • รายการรอส่ง','hover:bg-amber-50'),
-    card("closeModal(this);openSystemHealth()",'🩺','ตรวจสุขภาพระบบ','Cloud • เน็ต • กล้อง • พิมพ์ • พื้นที่เก็บ • PWA','hover:bg-emerald-50'),
-    card("closeModal(this);openPrinterSettings()",'🖨️','ตั้งค่าเครื่องพิมพ์','ใบเสร็จ 58/80 มม. หรือ A4 • สำเนา • พิมพ์อัตโนมัติ','hover:bg-sky-50'),
-    card("closeModal(this);openDeviceSettings()",'📱','อุปกรณ์นี้ / การแสดงผล',`ปรับจอและตัวอักษรแยกแต่ละเครื่อง<br><span class=\"text-sky-600\">${deviceSummary()}</span>`,'hover:bg-sky-50'),
-    card("installPWA()",'📲','ติดตั้ง PWA','ติดตั้งบนมือถือ แท็บเล็ต หรือคอม'),
-    hasPermission('resetData')?card("closeModal(this);openDataResetSettings()",'🧹','รีเซ็ต / ลบข้อมูล','ลบสินค้า ยอดขาย หรือเรียกกลับล่าสุด','hover:bg-red-50','border-red-200'):''
+    hasPermission('dataTools')?card('restorePoints','🛟','จุดกู้คืน 7/30 วัน','สำรองอัตโนมัติรายวัน • ย้อนกลับเมื่อแก้/ลบผิด','hover:bg-amber-50'):'',
+    hasPermission('dataTools')?card('dataTools','☁️','ข้อมูล / Backup / Cloud','สำรอง กู้คืน Export และ Google Sheets'):'',
+    card('frontAlerts','🔔',`แจ้งเตือนหน้าร้าน (${frontAlertCount()})`,'สต็อก • หมดอายุ • Cloud • รายการรอส่ง','hover:bg-amber-50'),
+    canSystem?card('systemHealth','🩺','ตรวจสุขภาพระบบ','Cloud • เน็ต • กล้อง • พิมพ์ • พื้นที่เก็บ • PWA','hover:bg-emerald-50'):'',
+    canSystem?card('printerSettings','🖨️','ตั้งค่าเครื่องพิมพ์','ใบเสร็จ 58/80 มม. หรือ A4 • สำเนา • พิมพ์อัตโนมัติ','hover:bg-sky-50'):'',
+    canSystem?card('deviceSettings','📱','อุปกรณ์นี้ / การแสดงผล',`ปรับจอและตัวอักษรแยกแต่ละเครื่อง<br><span class="text-sky-600">${deviceSummary()}</span>`,'hover:bg-sky-50'):'',
+    canSystem?card('installPWA','📲','ติดตั้ง PWA','ติดตั้งบนมือถือ แท็บเล็ต หรือคอม'):'',
+    hasPermission('resetData')?card('dataReset','🧹','รีเซ็ต / ลบข้อมูล','ลบสินค้า ยอดขาย หรือเรียกกลับล่าสุด','hover:bg-red-50','border-red-200'):''
   ].join('');
-  modal(`<div data-settings-panel="1" data-fullscreen="0" class="bg-white rounded-2xl p-5 md:p-6 mx-auto overflow-y-auto" style="width:min(97vw,1550px);max-width:1550px;max-height:94vh"><div class="flex flex-wrap justify-between items-center gap-3 sticky top-0 z-10 bg-white pb-3 border-b"><div><h3 class="text-2xl font-bold">⚙️ ตั้งค่า / เครื่องมือร้าน</h3><p class="text-sm text-slate-500">จัดเป็นหมวดหมู่เพื่อหาเมนูได้ง่ายขึ้น • แตะหัวข้อหมวดเพื่อย่อ/ขยาย</p></div><div class="flex items-center gap-2 shrink-0"><button onclick="toggleSettingsFullscreen(this)" title="ขยายตั้งค่าเต็มหน้าจอ" class="px-3 py-2 rounded-xl bg-slate-100 font-bold whitespace-nowrap">⛶ เต็มจอ</button><button onclick="closeModal(this)" class="text-3xl px-2">×</button></div></div><div class="space-y-4 mt-4">
+  modal(`<div data-settings-panel="1" data-fullscreen="0" class="bg-white rounded-2xl p-5 md:p-6 mx-auto overflow-y-auto" style="width:min(97vw,1550px);max-width:1550px;max-height:94vh"><div class="flex flex-wrap justify-between items-center gap-3 sticky top-0 z-10 bg-white pb-3 border-b"><div><h3 class="text-2xl font-bold">⚙️ ตั้งค่า / ศูนย์จัดการร้าน</h3><p class="text-sm text-slate-500">เมนูทุกหมวดใช้ข้อมูลชุดเดียวกับหน้าหลัก • แสดงเฉพาะรายการที่ผู้ใช้นี้มีสิทธิ์เปิด</p></div><div class="flex items-center gap-2 shrink-0">${canSystem?'<button onclick="toggleSettingsFullscreen(this)" title="ขยายตั้งค่าเต็มหน้าจอ" class="px-3 py-2 rounded-xl bg-slate-100 font-bold whitespace-nowrap">⛶ เต็มจอ</button>':''}<button onclick="closeModal(this)" class="text-3xl px-2">×</button></div></div><div class="space-y-4 mt-4">
     ${section('🏪','ร้านและการขาย','หน้าร้าน • สมาชิก • หน้าขาย','border-sky-200',shopSale,true)}
     ${section('📦','สินค้า / สต็อก / จัดซื้อ','สินค้า • ผู้ขาย • PO • สต็อก','border-amber-200',stockPurchase,true)}
-    ${section('💰','การเงิน / บัญชี / ภาษี','ยอดขาย • ค่าใช้จ่าย • ปิดวัน • VAT','border-emerald-200',financeTax,true)}
-    ${section('🔐','ผู้ใช้ / ความปลอดภัย / ตรวจสอบ','PIN • สิทธิ์ • ประวัติ • ตรวจผิดปกติ','border-violet-200',security,false)}
+    ${section('💰','การเงิน / บัญชี / ปิดยอด / ภาษี','ลูกหนี้ • ค่าใช้จ่าย • ปิดกะ • ปิดวัน • VAT','border-emerald-200',financeTax,true)}
+    ${section('🛡️','ตรวจสอบ / ระบบร้าน / ความปลอดภัย','PIN • สิทธิ์ • ประวัติ • ตรวจผิดปกติ','border-violet-200',security,false)}
     ${section('⚙️','ระบบ / อุปกรณ์ / ข้อมูล','Cloud • พิมพ์ • จอ • PWA • เครื่องมือ','border-slate-300',system,false)}
   </div><button onclick="closeModal(this)" class="w-full bg-slate-200 rounded-xl p-3 mt-5 font-bold">ปิด</button></div>`)
 }
@@ -1655,39 +1681,30 @@ function globalSearchGoProductList(idEnc,btn){const id=decodeURIComponent(idEnc|
 function globalSearchPurchaseOrderDetail(id){const po=(state.purchaseOrders||[]).find(x=>x.id===id);if(!po)return toast('ไม่พบใบสั่งซื้อ',true);const sup=supplierNameById(po.supplierId)||'ไม่ระบุผู้ขาย';modal(`<div class="bg-white rounded-2xl p-5 max-w-3xl mx-auto max-h-[92vh] overflow-y-auto"><div class="flex justify-between gap-3"><div><h3 class="text-2xl font-bold">🛒 ${esc(po.poNumber||po.id)}</h3><p class="text-sm text-slate-500">${esc(sup)} • ${esc(poStatusName(po.status))}${po.receiveNumber?` • รับเข้า ${esc(po.receiveNumber)}`:''}</p></div><button onclick="closeModal(this)" class="text-3xl">×</button></div><div class="mt-4 space-y-2">${(po.items||[]).map(i=>`<div class="border rounded-xl p-3 flex justify-between gap-3"><div><b>${esc(i.name)}</b><div class="text-xs text-slate-500">${n(i.qty)} ${esc(i.unitName||'ชิ้น')} × ${money(i.unitCost)}</div></div><b>${money(i.lineTotal)}</b></div>`).join('')||'<div class="text-slate-400">ไม่มีรายการสินค้า</div>'}</div><div class="mt-4 text-right text-2xl font-black">รวม ${money(po.total)}</div>${po.note?`<div class="mt-3 bg-slate-50 rounded-xl p-3">หมายเหตุ: ${esc(po.note)}</div>`:''}</div>`)}
 window.addEventListener('keydown',e=>{if((e.ctrlKey||e.metaKey)&&String(e.key).toLowerCase()==='k'){e.preventDefault();if(currentUser)openGlobalSearch()}})
 
-function nav(){const tabs=[['dashboard','🏠','หน้าแรก'],['pos','🛒','ขายสินค้า'],['products','📦','สินค้า/สต็อก'],['promoProducts','🔥','สินค้าโปรโมชั่น'],['sales','🧾','บิลย้อนหลัง'],['statistics','📈','สถิติ/กำไร'],['labels','🏷️','ป้ายราคา']].filter(t=>tabAllowed(t[0])),alertCount=frontAlertCount();return `<div class="sticky top-0 z-30 bg-white border-b shadow-sm"><div class="max-w-7xl mx-auto px-3 py-2 flex gap-2 items-center"><div class="flex-1 flex gap-1 overflow-x-auto scrollbar-thin">${tabs.map(t=>`<button onclick="activeTab='${t[0]}';menuOpen=false;lastRenderedTab='';render()" class="px-3 py-2 rounded-lg whitespace-nowrap font-semibold ${activeTab===t[0]?'text-white':''}" style="background:${activeTab===t[0]?state.config.primary_action_color:'transparent'}">${t[1]} ${t[2]}</button>`).join('')}</div><button onclick="openGlobalSearch()" class="px-3 py-2 rounded-lg bg-indigo-50 text-indigo-700 font-bold" title="ค้นหาทุกอย่าง (Ctrl+K)">🔎<span class="hidden lg:inline"> ค้นหา</span></button><button onclick="openFrontAlerts()" class="px-2 py-2 rounded-lg ${alertCount?'bg-amber-100 text-amber-800':'bg-emerald-50 text-emerald-700'}" title="แจ้งเตือนหน้าร้าน">🔔${alertCount?`<span class="text-xs font-black">${alertCount}</span>`:''}</button><button onclick="syncNow(false)" class="px-2 py-2 rounded-lg ${navigator.onLine?(getPendingSyncQueue().length?'bg-amber-50':'bg-emerald-50'):'bg-slate-200'}" title="${cloudStatusText()}">${navigator.onLine?(getPendingSyncQueue().length?'☁️'+getPendingSyncQueue().length:'☁️'):'📴'}</button><div class="hidden md:block text-right px-2"><div class="text-xs text-slate-400">เข้าใช้งานโดย</div><div class="font-semibold text-sm">👤 ${esc(currentUser?.name||'')}</div></div><div class="relative"><button onclick="menuOpen=!menuOpen;render()" class="px-3 py-2 rounded-lg bg-slate-100">☰</button><div class="${menuOpen?'block':'hidden'} absolute right-0 bg-white shadow-xl border rounded-xl w-60 p-2">${ownerReportOnlyMode()?`<button onclick="menuOpen=false;disableOwnerReportOnly()" class="w-full text-left p-3 bg-indigo-50 text-indigo-800 rounded font-bold">👁️ ปิดโหมดดูอย่างเดียว</button>`:''}${hasPermission('systemSettings')?`<button onclick="menuOpen=false;openSettings()" class="w-full text-left p-3 hover:bg-slate-100 rounded font-bold">⚙️ ตั้งค่าทั้งหมด</button>`:''}${hasPermission('viewReports')?`<button onclick="menuOpen=false;openDailyReport()" class="w-full text-left p-3 hover:bg-slate-100 rounded">📊 รายงานประจำวัน</button>`:''}<button onclick="menuOpen=false;openFrontAlerts()" class="w-full text-left p-3 hover:bg-slate-100 rounded">🔔 แจ้งเตือน (${alertCount})</button><div class="px-2 py-2 text-xs ${navigator.onLine?'text-emerald-600':'text-slate-500'} border-t mt-1">${cloudStatusText()}</div><div class="md:hidden px-2 py-2 text-xs text-slate-500">👤 ${esc(currentUser?.name||'')}</div><button onclick="logout()" class="w-full text-left p-2 hover:bg-red-50 text-red-600 rounded">🚪 ออกจากระบบ</button></div></div></div></div>`}
+function nav(){const tabs=[['dashboard','🏠','หน้าแรก'],['pos','🛒','ขายสินค้า'],['products','📦','สินค้า/สต็อก'],['promoProducts','🔥','สินค้าโปรโมชั่น'],['sales','🧾','บิลย้อนหลัง'],['statistics','📈','สถิติ/กำไร'],['labels','🏷️','ป้ายราคา']].filter(t=>tabAllowed(t[0])),alertCount=frontAlertCount();return `<div class="sticky top-0 z-30 bg-white border-b shadow-sm"><div class="max-w-7xl mx-auto px-3 py-2 flex gap-2 items-center"><div class="flex-1 flex gap-1 overflow-x-auto scrollbar-thin">${tabs.map(t=>`<button onclick="activeTab='${t[0]}';menuOpen=false;lastRenderedTab='';render()" class="px-3 py-2 rounded-lg whitespace-nowrap font-semibold ${activeTab===t[0]?'text-white':''}" style="background:${activeTab===t[0]?state.config.primary_action_color:'transparent'}">${t[1]} ${t[2]}</button>`).join('')}</div><button onclick="openGlobalSearch()" class="px-3 py-2 rounded-lg bg-indigo-50 text-indigo-700 font-bold" title="ค้นหาทุกอย่าง (Ctrl+K)">🔎<span class="hidden lg:inline"> ค้นหา</span></button><button onclick="openFrontAlerts()" class="px-2 py-2 rounded-lg ${alertCount?'bg-amber-100 text-amber-800':'bg-emerald-50 text-emerald-700'}" title="แจ้งเตือนหน้าร้าน">🔔${alertCount?`<span class="text-xs font-black">${alertCount}</span>`:''}</button><button onclick="syncNow(false)" class="px-2 py-2 rounded-lg ${navigator.onLine?(getPendingSyncQueue().length?'bg-amber-50':'bg-emerald-50'):'bg-slate-200'}" title="${cloudStatusText()}">${navigator.onLine?(getPendingSyncQueue().length?'☁️'+getPendingSyncQueue().length:'☁️'):'📴'}</button><div class="hidden md:block text-right px-2"><div class="text-xs text-slate-400">เข้าใช้งานโดย</div><div class="font-semibold text-sm">👤 ${esc(currentUser?.name||'')}</div></div><div class="relative"><button onclick="menuOpen=!menuOpen;render()" class="px-3 py-2 rounded-lg bg-slate-100">☰</button><div class="${menuOpen?'block':'hidden'} absolute right-0 bg-white shadow-xl border rounded-xl w-60 p-2">${ownerReportOnlyMode()?`<button onclick="menuOpen=false;disableOwnerReportOnly()" class="w-full text-left p-3 bg-indigo-50 text-indigo-800 rounded font-bold">👁️ ปิดโหมดดูอย่างเดียว</button>`:''}${canOpenStoreCenter()?`<button onclick="menuOpen=false;openSettings()" class="w-full text-left p-3 hover:bg-slate-100 rounded font-bold">⚙️ ตั้งค่า / ศูนย์จัดการร้าน</button>`:''}${hasPermission('viewReports')?`<button onclick="menuOpen=false;openDailyReport()" class="w-full text-left p-3 hover:bg-slate-100 rounded">📊 รายงานประจำวัน</button>`:''}<button onclick="menuOpen=false;openFrontAlerts()" class="w-full text-left p-3 hover:bg-slate-100 rounded">🔔 แจ้งเตือน (${alertCount})</button><div class="px-2 py-2 text-xs ${navigator.onLine?'text-emerald-600':'text-slate-500'} border-t mt-1">${cloudStatusText()}</div><div class="md:hidden px-2 py-2 text-xs text-slate-500">👤 ${esc(currentUser?.name||'')}</div><button onclick="logout()" class="w-full text-left p-2 hover:bg-red-50 text-red-600 rounded">🚪 ออกจากระบบ</button></div></div></div></div>`}
 function render(){deferredCloudRender=false;if(currentUser&&!tabAllowed(activeTab))activeTab='dashboard';const tabChanged=lastRenderedTab!==activeTab;const device=applyDeviceProfile();if(state.settings.requireLogin&&!currentUser)return loginScreen();const app=document.getElementById('app');app.style.background=state.config.background_color;const body=activeTab==='dashboard'?renderDashboard():activeTab==='pos'?renderPOS():activeTab==='products'?renderProducts():activeTab==='promoProducts'?renderProductPromotions():activeTab==='sales'?renderSales():activeTab==='statistics'?renderStats():renderLabels();const mainClass=activeTab==='pos'?'w-full p-1':(device.mode==='mobile'?'w-full p-2':'max-w-7xl mx-auto p-4');app.innerHTML=`${nav()}<main class="${mainClass}">${body}</main>`;if(tabChanged){lastRenderedTab=activeTab;requestAnimationFrame(()=>window.scrollTo(0,0))}if(activeTab==='statistics')setTimeout(drawStats,50);updateCustomerDisplay()}
 
 function renderOwnerMobileReports(){const r=dailyReportData(localDateKey()),tx=r.taxSummary||{},month=localDateKey().slice(0,7);return `<div class="space-y-3"><section class="bg-indigo-50 border-2 border-indigo-200 rounded-2xl p-4"><div class="flex justify-between gap-3"><div><h1 class="text-xl font-bold text-indigo-900">👁️ โหมดเจ้าของมือถือ</h1><p class="text-sm text-indigo-700">ดูรายงานอย่างเดียว • ไม่มีปุ่มขาย แก้ ลบ คืนสินค้า หรือปิดยอด</p></div><button onclick="disableOwnerReportOnly()" class="bg-white border border-indigo-300 rounded-xl px-3 py-2 text-sm font-bold">ปิดโหมด</button></div></section><div class="grid grid-cols-2 gap-2"><div class="bg-white rounded-2xl p-4 shadow"><div class="text-xs text-slate-500">ยอดขายวันนี้</div><b class="text-2xl text-emerald-700">${money(r.revenue)}</b></div><div class="bg-white rounded-2xl p-4 shadow"><div class="text-xs text-slate-500">กำไรสุทธิวันนี้</div><b class="text-2xl ${r.netProfit>=0?'text-emerald-700':'text-red-700'}">${money(r.netProfit)}</b></div><div class="bg-white rounded-2xl p-4 shadow"><div class="text-xs text-slate-500">VAT วันนี้</div><b class="text-xl">${money(tx.vat||0)}</b></div><div class="bg-white rounded-2xl p-4 shadow"><div class="text-xs text-slate-500">ยกเว้น VAT</div><b class="text-xl">${money(tx.nonTax||0)}</b></div></div><div class="grid grid-cols-2 gap-2"><button onclick="openDailyReport()" class="bg-white rounded-2xl p-4 shadow text-left"><div class="text-3xl">📊</div><b>รายงานวันนี้</b></button><button onclick="openMonthlyTaxSummary('${month}')" class="bg-white rounded-2xl p-4 shadow text-left"><div class="text-3xl">📅</div><b>ภาษีรายเดือน</b></button><button onclick="activeTab='statistics';render()" class="bg-white rounded-2xl p-4 shadow text-left"><div class="text-3xl">📈</div><b>สถิติ / กำไร</b></button><button onclick="activeTab='sales';render()" class="bg-white rounded-2xl p-4 shadow text-left"><div class="text-3xl">🧾</div><b>บิลย้อนหลัง</b></button><button onclick="openDeadStockReport(30)" class="bg-white rounded-2xl p-4 shadow text-left"><div class="text-3xl">🐢</div><b>สินค้าค้างสต็อก</b></button><button onclick="openAccountingExport()" class="bg-white rounded-2xl p-4 shadow text-left"><div class="text-3xl">📤</div><b>Export บัญชี</b></button></div></div>`}
 
 function renderDashboard(){
   if(ownerReportOnlyMode())return renderOwnerMobileReports();
-  const st=stats(),low=state.products.filter(p=>p.stock<=n(p.lowStock,state.config.low_stock_default)).length,exp=state.products.filter(p=>['warn','expired'].includes(expiryInfo(p).level)).length,payable=state.suppliers.reduce((a,x)=>a+Math.max(0,supplierBalance(x.id)),0),shift=shiftMetrics(),frontAlerts=storeFrontAlerts(),alertCount=frontAlertCount();
+  const low=state.products.filter(p=>p.stock<=n(p.lowStock,state.config.low_stock_default)).length,exp=state.products.filter(p=>['warn','expired'].includes(expiryInfo(p).level)).length,payable=state.suppliers.reduce((a,x)=>a+Math.max(0,supplierBalance(x.id)),0),frontAlerts=storeFrontAlerts(),alertCount=frontAlertCount();
   const groups=[
     {id:'sale',icon:'🛍️',title:'งานขายหน้าร้าน',desc:'ขายสินค้า ลูกค้า บิล และบริการหน้าร้าน',tone:'emerald',cards:[
-      {icon:'🛒',title:'ขายสินค้า',desc:'เริ่มขายสินค้า สแกนบาร์โค้ด สมาชิก ส่วนลด และชำระเงิน',onclick:'startSale()'},
-      {icon:'▥',title:'เพิ่มสินค้าด้วยบาร์โค้ด',desc:'สแกนบาร์โค้ดแล้วเปิดแบบฟอร์มเพิ่มสินค้าอัตโนมัติ',onclick:'openAddProductByBarcode()'},
-      {icon:'🔎',title:'ค้นสินค้าฉลาด',desc:'ค้นด้วยชื่อ บาร์โค้ด หมวด คำค้น ยี่ห้อ หรือผู้ขาย',onclick:'openProductPicker()'},
-      {icon:'🧾',title:'บิลย้อนหลัง',desc:`บิลทั้งหมด ${state.sales.length} • ค้นหา พิมพ์ซ้ำ คืน/ยกเลิก`,onclick:"activeTab='sales';render()"},
-      {icon:'🖥️',title:'จอลูกค้า',desc:'เปิดหน้าต่างที่สอง แสดงสินค้า ยอด ส่วนลด และ QR',onclick:'openCustomerDisplay()'}
-    ]},
+      hasPermission('sell')?{icon:'🛒',title:'ขายสินค้า',desc:'เริ่มขายสินค้า สแกนบาร์โค้ด สมาชิก ส่วนลด และชำระเงิน',onclick:"openStoreModule('pos')"}:null,
+      hasPermission('addProduct')?{icon:'▥',title:'เพิ่มสินค้าด้วยบาร์โค้ด',desc:'สแกนบาร์โค้ดแล้วเปิดแบบฟอร์มเพิ่มสินค้าอัตโนมัติ',onclick:'openAddProductByBarcode()'}:null,
+      hasPermission('sell')?{icon:'🔎',title:'ค้นสินค้าฉลาด',desc:'ค้นด้วยชื่อ บาร์โค้ด หมวด คำค้น ยี่ห้อ หรือผู้ขาย',onclick:'openProductPicker()'}:null,
+      hasPermission('viewSalesHistory')?{icon:'🧾',title:'บิลย้อนหลัง',desc:`บิลทั้งหมด ${state.sales.length} • ค้นหา พิมพ์ซ้ำ คืน/ยกเลิก`,onclick:"openStoreModule('sales')"}:null,
+      hasPermission('sell')?{icon:'🖥️',title:'จอลูกค้า',desc:'เปิดหน้าต่างที่สอง แสดงสินค้า ยอด ส่วนลด และ QR',onclick:'openCustomerDisplay()'}:null
+    ].filter(Boolean)},
     {id:'stock',icon:'📦',title:'สินค้า / สต็อก / จัดซื้อ',desc:'ดูแลสินค้า โปรโมชั่น สต็อก ผู้ขาย และการสั่งซื้อ',tone:'sky',cards:[
-      {icon:'📦',title:'สินค้า / สต็อก',desc:`สินค้า ${state.products.length} • ใกล้หมด ${low} • ใกล้หมดอายุ ${exp}`,onclick:"activeTab='products';render()"},
-      {icon:'🔥',title:'สินค้าโปรโมชั่น',desc:`กำลังโปร ${state.products.filter(p=>productPromoStatus(p).active).length} รายการ`,onclick:"activeTab='promoProducts';render()"},
-      {icon:'📋',title:'เช็กสต็อกจริง',desc:`ตรวจนับล่าสุด ${state.stockCounts[0]?new Date(state.stockCounts[0].time).toLocaleDateString('th-TH'):'ยังไม่มี'}`,onclick:'openStockCount()'},
-      {icon:'🚚',title:'ผู้ขาย / เจ้าหนี้',desc:`${state.suppliers.length} ผู้ขาย • ค้าง ${money(payable)}`,onclick:'openSuppliers()'},
-      ...(hasPermission('managePurchaseOrders')?[{icon:'🛒',title:'ใบสั่งซื้อ PO',desc:`รอรับ ${(state.purchaseOrders||[]).filter(x=>x.status==='ordered').length} ใบ`,onclick:'openPurchaseOrders()'}]:[]),
-      {icon:'🏷️',title:'ป้ายราคา',desc:'พิมพ์ป้ายราคาและบาร์โค้ดสินค้า',onclick:"activeTab='labels';render()"}
-    ]},
-    {id:'finance',icon:'💰',title:'การเงิน / บัญชี / ปิดยอด',desc:'ลูกหนี้ ค่าใช้จ่าย ปิดกะ และติดตามผลการขาย',tone:'amber',cards:[
-      ...(hasPermission('manageReceivables')?[{icon:'📒',title:'ลูกหนี้ / ขายเชื่อ',desc:`คงค้าง ${money((state.receivables||[]).reduce((a,x)=>a+(x.status==='paid'?0:n(x.outstanding)),0))}`,onclick:'openReceivables()'}]:[]),
-      ...(hasPermission('manageExpenses')?[{icon:'💸',title:'ค่าใช้จ่ายร้าน',desc:`วันนี้ ${money((state.expenses||[]).filter(x=>timestampLocalDateKey(x.time)===localDateKey()).reduce((a,x)=>a+n(x.amount),0))}`,onclick:'openExpenses()'}]:[]),
-      {icon:'🧮',title:'ปิดยอด / ปิดกะ',desc:`กะปัจจุบัน ${shift.count} บิล • ${money(shift.revenue)}`,onclick:'openShiftClose()'},
-      {icon:'📈',title:'สถิติและกำไร',desc:`ยอดสุทธิ ${money(st.revenue)} • กำไร ${money(st.profit)}`,onclick:"activeTab='statistics';render()"}
-    ]},
-    {id:'control',icon:'🛡️',title:'ตรวจสอบ / ระบบร้าน',desc:'ตรวจประวัติการทำรายการและเครื่องมือควบคุมร้าน',tone:'violet',cards:[
-      {icon:'🕵️',title:'ประวัติการแก้ไข',desc:`บันทึก ${state.auditLogs.length} รายการ`,onclick:'openAuditLogs()'}
-    ]}
+      tabAllowed('products')?{icon:'📦',title:'สินค้า / สต็อก',desc:`สินค้า ${state.products.length} • ใกล้หมด ${low} • ใกล้หมดอายุ ${exp}`,onclick:"openStoreModule('products')"}:null,
+      tabAllowed('promoProducts')?{icon:'🔥',title:'สินค้าโปรโมชั่น',desc:`กำลังโปร ${state.products.filter(p=>productPromoStatus(p).active).length} รายการ`,onclick:"openStoreModule('promoProducts')"}:null,
+      hasPermission('stockCount')?{icon:'📋',title:'เช็กสต็อกจริง',desc:`ตรวจนับล่าสุด ${state.stockCounts[0]?new Date(state.stockCounts[0].time).toLocaleDateString('th-TH'):'ยังไม่มี'}`,onclick:"openStoreModule('stockCount')"}:null,
+      hasPermission('manageSuppliers')?{icon:'🚚',title:'ผู้ขาย / เจ้าหนี้',desc:`${state.suppliers.length} ผู้ขาย • ค้าง ${money(payable)}`,onclick:"openStoreModule('suppliers')"}:null,
+      hasPermission('managePurchaseOrders')?{icon:'🛒',title:'ใบสั่งซื้อ PO',desc:`รอรับ ${(state.purchaseOrders||[]).filter(x=>x.status==='ordered').length} ใบ`,onclick:"openStoreModule('purchaseOrders')"}:null,
+      tabAllowed('labels')?{icon:'🏷️',title:'ป้ายราคา',desc:'พิมพ์ป้ายราคาและบาร์โค้ดสินค้า',onclick:"openStoreModule('labels')"}:null
+    ].filter(Boolean)}
   ];
   const visibleGroups=groups.filter(g=>g.cards.length);
   const toneClass={emerald:'border-emerald-200 bg-emerald-50',sky:'border-sky-200 bg-sky-50',amber:'border-amber-200 bg-amber-50',violet:'border-violet-200 bg-violet-50'};
