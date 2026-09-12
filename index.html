@@ -44,12 +44,15 @@
     body[data-device="mobile"] .classic-pos{min-height:calc(100dvh - 54px)}
     @media(max-width:420px){body[data-device="mobile"] .pos-actions{grid-template-columns:repeat(2,1fr)}body[data-device="mobile"] .pos-keypad button{height:46px;font-size:24px}}
   
-    .app-modal-root{align-items:flex-start!important;justify-content:center!important;padding:8px!important;overflow:hidden;overscroll-behavior:contain}
-    .app-modal-viewport{width:100%;height:calc(100dvh - 16px);max-height:calc(100dvh - 16px);overflow-y:auto;overflow-x:hidden;overscroll-behavior:contain;scrollbar-gutter:stable;padding:0 2px 8px}
-    .app-modal-viewport>div{margin-top:0!important;margin-bottom:0!important}
+    .app-modal-root{align-items:center!important;justify-content:center!important;padding:8px!important;overflow:hidden;overscroll-behavior:contain}
+    .app-modal-root.app-modal-top{align-items:flex-start!important}
+    .app-modal-viewport{width:min(100%,1320px);height:calc(100dvh - 16px);max-height:calc(100dvh - 16px);display:flex;align-items:center;justify-content:center;overflow:auto;overflow-x:hidden;overscroll-behavior:contain;scrollbar-gutter:stable;padding:0 2px 8px}
+    .app-modal-viewport>div{margin:0 auto!important;width:min(100%,1280px);max-height:calc(100dvh - 24px)!important;overflow-y:auto!important;overflow-x:hidden}
+    .app-modal-root.app-modal-top .app-modal-viewport{align-items:flex-start}
     .app-modal-center .app-modal-viewport{display:flex;align-items:center;justify-content:center}
-    .app-modal-center .app-modal-viewport>div{width:100%}
-    @media(min-width:768px){.app-modal-root{padding:10px 14px!important}.app-modal-viewport{height:calc(100dvh - 20px);max-height:calc(100dvh - 20px)}}
+    .app-modal-center .app-modal-viewport>div{width:min(100%,860px)}
+    @media(max-width:767px){.app-modal-root{padding:6px!important}.app-modal-viewport{height:calc(100dvh - 12px);max-height:calc(100dvh - 12px);padding:0 1px 6px}.app-modal-viewport>div{max-height:calc(100dvh - 18px)!important;border-radius:18px!important}}
+    @media(min-width:768px){.app-modal-root{padding:10px 14px!important}.app-modal-viewport{height:calc(100dvh - 20px);max-height:calc(100dvh - 20px)}.app-modal-viewport>div{max-height:calc(100dvh - 28px)!important}}
 </style>
 </head>
 <body class="min-h-full">
@@ -308,7 +311,7 @@ function handlePopupCashInput(el){const formatted=formatCashText(el.value);el.va
 function beep(){ try{const ac=new (window.AudioContext||window.webkitAudioContext)(),o=ac.createOscillator(),g=ac.createGain();o.connect(g);g.connect(ac.destination);o.frequency.value=760;g.gain.setValueAtTime(.15,ac.currentTime);g.gain.exponentialRampToValueAtTime(.01,ac.currentTime+.08);o.start();o.stop(ac.currentTime+.08)}catch(e){} }
 function toast(msg,error=false){const el=document.createElement('div');el.className=`fixed top-4 right-4 z-[100] px-5 py-3 rounded-xl shadow-xl text-white ${error?'bg-red-600':'bg-slate-800'}`;el.textContent=msg;document.body.appendChild(el);setTimeout(()=>el.remove(),2800)}
 function syncModalScrollLock(){document.body.style.overflow=document.querySelector('.app-modal-root')?'hidden':''}
-function modal(html){const m=document.createElement('div');m.className='app-modal-root fixed inset-0 z-50 bg-black/50 flex';m.innerHTML=`<div class="app-modal-viewport scrollbar-thin">${html}</div>`;if(m.querySelector('.pay-popup-card'))m.classList.add('app-modal-center');m.addEventListener('click',e=>{if(e.target===m){stopScanner();m.remove();syncModalScrollLock()}});document.body.appendChild(m);syncModalScrollLock();const v=m.querySelector('.app-modal-viewport');if(v)v.scrollTop=0;return m}
+function modal(html){const m=document.createElement('div');m.className='app-modal-root fixed inset-0 z-50 bg-black/50 flex';m.innerHTML=`<div class="app-modal-viewport scrollbar-thin">${html}</div>`;const card=m.querySelector('.app-modal-viewport>div');if(card){card.classList.add('app-modal-card');card.style.maxWidth=card.style.maxWidth||'';card.style.maxHeight='calc(100dvh - 24px)';card.style.overflowY='auto';}if(m.querySelector('.pay-popup-card'))m.classList.add('app-modal-center');m.addEventListener('click',e=>{if(e.target===m){stopScanner();m.remove();syncModalScrollLock()}});document.body.appendChild(m);syncModalScrollLock();const v=m.querySelector('.app-modal-viewport');if(v)v.scrollTop=0;requestAnimationFrame(()=>{const box=(card||m.querySelector('.app-modal-viewport>div'));if(!box)return;const limit=window.innerHeight-32;const tooTall=box.scrollHeight>limit||box.getBoundingClientRect().height>limit;if(tooTall)m.classList.add('app-modal-top');else m.classList.remove('app-modal-top');if(v)v.scrollTop=0;box.scrollTop=0;});return m}
 function closeModal(el){const root=el.closest('.fixed.inset-0');if(root)root.remove();syncModalScrollLock()}
 function ownerReportOnlyMode(){const p=getDevicePrefs(),d=detectPhysicalDevice(),phoneLike=Math.min(Number(d.width)||0,Number(d.height)||0)<=700&&((Number(d.touchPoints)||0)>0||!!d.coarse);return !!(currentUser?.role==='owner'&&p.ownerReportOnly&&(d.mode==='mobile'||phoneLike))}
 function disableOwnerReportOnly(){const p=getDevicePrefs();p.ownerReportOnly=false;setDevicePrefs(p);activeTab='dashboard';render();toast('ปิดโหมดเจ้าของดูรายงานอย่างเดียวแล้ว')}
