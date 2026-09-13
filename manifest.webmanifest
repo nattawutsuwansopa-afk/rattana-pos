@@ -1,15 +1,13 @@
 {
-  "id": "./",
   "name": "Rattana POS - ร้านรัตนาพานิชย์",
   "short_name": "Rattana POS",
-  "description": "ระบบขายหน้าร้าน POS แบบ Offline-first พร้อม Durable Cloud Sync และ Soft Delete",
+  "description": "ระบบ POS ร้านรัตนาพานิชย์",
   "lang": "th",
-  "dir": "ltr",
   "start_url": "./index.html",
   "scope": "./",
   "display": "standalone",
   "orientation": "any",
-  "background_color": "#eef2ff",
+  "background_color": "#f8fafc",
   "theme_color": "#10b981",
   "icons": [
     {
@@ -23,19 +21,6 @@
       "sizes": "512x512",
       "type": "image/png",
       "purpose": "any maskable"
-    }
-  ],
-  "shortcuts": [
-    {
-      "name": "ขายสินค้า",
-      "short_name": "ขาย",
-      "url": "./index.html#pos",
-      "icons": [
-        {
-          "src": "./icons/icon-192.png",
-          "sizes": "192x192"
-        }
-      ]
     }
   ]
 }
