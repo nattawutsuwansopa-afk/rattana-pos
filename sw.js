@@ -1,5 +1,5 @@
-const CACHE_NAME = 'rattana-pos-v6.18.14-clean-home-top-alert';
-const RUNTIME_CACHE = 'rattana-pos-runtime-v6.18.14';
+const CACHE_NAME = 'rattana-pos-v6.18.17-responsive-fit-shift-close';
+const RUNTIME_CACHE = 'rattana-pos-runtime-v6.18.17';
 const CORE = [
   './',
   './index.html',
