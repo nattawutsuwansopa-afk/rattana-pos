@@ -8,7 +8,7 @@
   <meta name="apple-mobile-web-app-capable" content="yes">
   <meta name="apple-mobile-web-app-status-bar-style" content="default">
   <meta name="apple-mobile-web-app-title" content="Rattana POS">
-  <title>Rattana POS - Single File Test v6.18.40</title>
+  <title>Rattana POS - Single File Test v6.18.41</title>
   <script src="https://cdn.tailwindcss.com"></script>
   <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
   <script src="https://unpkg.com/html5-qrcode@2.3.8/html5-qrcode.min.js"></script>
@@ -25,7 +25,7 @@
     @media(min-width:901px) and (max-height:820px){.pos-actions{top:64px;margin-top:-91px;padding:4px;gap:3px;height:calc(100dvh - 68px);max-height:calc(100dvh - 68px);overflow:hidden}.pos-action{height:58px;font-size:12px;padding:2px 3px}.pos-action .ico{font-size:20px;margin-bottom:2px}.pos-action small{font-size:10px}.pos-keyzone{gap:4px;margin-top:3px;padding-top:3px}.pos-keypad{gap:3px}.pos-keypad button{height:42px;font-size:25px}.pos-keypad .op,.pos-keypad .ok{font-size:23px}.pos-keypad .clear{font-size:18px}.pos-keypad .del{font-size:20px}.pos-sidekeys{gap:3px}.pos-sidekeys button{height:43px;font-size:14px}}
     @media(max-width:900px){.classic-pos{width:100%;overflow:hidden}.pos-work{grid-template-columns:1fr;gap:4px;width:100%;max-width:100%;overflow:hidden}.pos-left,.pos-actions{width:100%;max-width:100%}.pos-actions{display:flex;flex-wrap:wrap;margin-top:0;margin-left:0;position:static;top:auto;justify-self:stretch;height:auto;max-height:none;overflow:hidden;padding:8px;background:#a9dce1;border:1px solid #82c7cf;border-radius:14px;outline:none;box-shadow:none}.pos-top{grid-template-columns:120px 1fr;min-height:88px;padding:4px 8px}.pos-top>div:nth-child(3){grid-column:1/-1}.pos-table-wrap{height:245px;max-width:100%;overflow:auto}.pos-grid{max-width:none}.pos-totalbox{grid-template-columns:1fr 190px}.pos-total-number{font-size:28px;min-width:180px}.pos-summary{min-height:96px;width:100%}.pos-action{min-height:64px;font-size:13px;flex:1 1 calc((100% - 12px)/4)}.pos-action .ico{font-size:22px}.pos-keypad button{height:56px;font-size:30px}.pos-keypad .op,.pos-keypad .ok{font-size:28px}.pos-keypad .clear{font-size:22px}.pos-keypad .del{font-size:24px}.pos-sidekeys button{min-height:56px;font-size:18px}.pos-actions>.pos-action:nth-last-of-type(1),.pos-actions>.pos-action:nth-last-of-type(2){max-width:none}}
     @media(max-width:600px){.pos-top{grid-template-columns:1fr;min-height:auto;padding:4px 8px}.pos-brand{display:none}.pos-info{font-size:12px}.pos-work{padding:2px}.pos-table-wrap{height:240px}.pos-grid{min-width:760px}.pos-summary{grid-template-columns:1fr;min-height:unset}.pos-product-preview{display:none}.pos-total-area{padding:4px}.pos-totalbox{grid-template-columns:1fr}.pos-total-number{min-width:0;width:100%;font-size:34px}.pos-payment-row{grid-template-columns:1fr}.pos-change-box{grid-template-columns:1fr}.pos-actions{display:flex;flex-wrap:wrap;margin-top:0;margin-left:0;position:static;top:auto;justify-self:stretch;width:100%;height:auto;max-height:none;overflow:visible;padding:6px;background:#a9dce1;border:1px solid #82c7cf;border-radius:12px;outline:none;box-shadow:none}.pos-keyzone{grid-template-columns:1fr}.pos-keypad{grid-template-columns:repeat(4,1fr)}.pos-action{width:100%;min-width:0;height:auto;min-height:56px;padding:4px 2px;font-size:12px;flex:1 1 calc((100% - 8px)/3)}.pos-action .ico{font-size:20px}.pos-keypad button{height:54px;font-size:28px}.pos-keypad .op,.pos-keypad .ok{font-size:26px}.pos-keypad .clear{font-size:20px}.pos-keypad .del{font-size:22px}.pos-sidekeys{grid-template-columns:repeat(2,minmax(0,1fr))}.pos-sidekeys button{width:100%;min-width:0;min-height:52px;font-size:15px}.pay-popup-card{width:min(100%,620px);max-height:calc(100dvh - 18px);overflow:auto}.pos-cash-input,.pos-method-select{min-width:0;width:100%}.pos-terminal-display{font-size:17px}}
-    /* v6.18.40: duplicate responsive rules consolidated; unique systems retained. */
+    /* v6.18.41: duplicate responsive rules consolidated; unique systems retained. */
     @media(min-width:901px){
       .pos-table-wrap{height:clamp(340px,45dvh,430px)}
       .pos-summary{min-height:122px}
@@ -107,7 +107,7 @@
 
 
 
-    /* v6.18.40: desktop vertical balance */
+    /* v6.18.41: desktop vertical balance */
     @media(min-width:901px){
       .pos-summary{margin-top:64px}
     }
@@ -1954,7 +1954,7 @@ function renderPOS(){
   ${saleMenuEnabled('customerDisplay')?`<button class="pos-action blue" onclick="runPOSCommand('customerDisplay')"><span class="ico">🖥️</span>เปิดจอ<br>ลูกค้า</button>`:''}${saleMenuEnabled('holdBill')?`<button class="pos-action red" onclick="runPOSCommand('holdBill')"><span class="ico">⏸️</span>พักบิล${shortcutLabel('holdBill')?`<br><small>(${shortcutLabel('holdBill')})</small>`:''}</button>`:''}${saleMenuEnabled('recall')?`<button class="pos-action red" onclick="runPOSCommand('recall')"><span class="ico">🔁</span>เรียกบิล${shortcutLabel('recall')?`<br><small>(${shortcutLabel('recall')})</small>`:''}</button>`:''}
   ${saleMenuEnabled('promo')?`<button class="pos-action red" onclick="runPOSCommand('promo')"><span class="ico">🏷️</span>ส่วนลด/<br>โปรโมชั่น</button>`:''}${saleMenuEnabled('promptPay')?`<button class="pos-action blue" onclick="runPOSCommand('promptPay')"><span class="ico">▣</span>QR<br>พร้อมเพย์</button>`:''}${saleMenuEnabled('addItem')?`<button class="pos-action purple" onclick="runPOSCommand('addItem')"><span class="ico">🆕</span>เพิ่มสินค้า<br>ในบิล</button>`:''}
   ${saleMenuEnabled('itemDiscount')?`<button class="pos-action purple" onclick="runPOSCommand('itemDiscount')"><span class="ico">✏️</span>ส่วนลด<br>รายการ</button>`:''}${saleMenuEnabled('drawer')?`<button class="pos-action blue" onclick="runPOSCommand('drawer')"><span class="ico">🗄️</span>เปิด<br>ลิ้นชัก</button>`:''}
-  ${saleMenuEnabled('camera')?`<button class="pos-action cyan" onclick="runPOSCommand('camera')"><span class="ico">📷</span>สแกน<br>กล้อง</button>`:''}${saleMenuEnabled('payment')?`<button class="pos-action moneybtn" onclick="runPOSCommand('payment')" ${cart.length?'':'disabled'}><span class="ico">✅</span>รับชำระ<br>${c.total.toFixed(2)}${shortcutLabel('payment')?`<br><small>(${shortcutLabel('payment')})</small>`:''}</button>`:''}${saleMenuEnabled('closeSale')?`<button class="pos-action red" onclick="runPOSCommand('closeSale')"><span class="ico">⏻</span>ปิดหน้า<br>ขาย</button>`:''}
+  ${saleMenuEnabled('camera')?`<button class="pos-action cyan" onclick="runPOSCommand('camera')"><span class="ico">📷</span>สแกน<br>กล้อง</button>`:''}${saleMenuEnabled('payment')?`<button class="pos-action moneybtn" onclick="runPOSCommand('payment')" ${cart.length?'':'disabled'}><span class="ico">✅</span>รับชำระ<br>${c.total.toFixed(2)}${shortcutLabel('payment')?`<br><small>(${shortcutLabel('payment')})</small>`:''}</button>`:''}<button class="pos-action red" onclick="runPOSCommand('closeSale')"><span class="ico">⏻</span>ปิดหน้า<br>ขาย<small>(ESC)</small></button>
   ${saleMenuEnabled('shiftClose')&&hasPermission('shiftClose')?`<button class="pos-action orange" onclick="runPOSCommand('shiftClose')"><span class="ico">🧮</span>ปิดยอด/<br>ปิดกะ</button>`:''}${saleMenuEnabled('dayClose')&&hasPermission('shiftClose')?`<button class="pos-action blue" onclick="runPOSCommand('dayClose')"><span class="ico">🔒</span>ปิดยอด<br>ประจำวัน</button>`:''}${saleMenuEnabled('bankTransfer')&&hasPermission('manageBankTransfers')?`<button class="pos-action cyan" onclick="runPOSCommand('bankTransfer')"><span class="ico">🏦</span>รายการ<br>โอนเงิน</button>`:''}
   ${saleMenuEnabled('keypad')?`<div class="pos-keyzone"><div class="pos-keypad">${[['7',''],['8',''],['9',''],['/','op'],['4',''],['5',''],['6',''],['*','op'],['1',''],['2',''],['3',''],['-','op'],['C','clear'],['0',''],['.','op'],['+','op'],['DEL','del'],['00',''],['OK','ok']].map(x=>`<button class="${x[1]}" onclick="posKey('${x[0]}')">${x[0]==='DEL'?'⌫':x[0]==='C'?'ล้าง':x[0]}</button>`).join('')}</div><div class="pos-sidekeys"><button onclick="posCashPreset('exact')">💵 รับเงินพอดี</button>${saleMenuEnabled('settingsSide')?`<button onclick="runPOSCommand('settings')">⚙️ ตั้งค่า${shortcutLabel('settings')?` (${shortcutLabel('settings')})`:''}</button>`:''}</div></div>`:''}
 </aside></div></section>`;
@@ -1988,6 +1988,42 @@ function handleGlobalPOSShortcut(event){
   event.preventDefault();runPOSCommand(action)
 }
 window.addEventListener('keydown',handleGlobalPOSShortcut);
+
+// -----------------------
+// Universal ESC = Close / Back / Exit current page
+// -----------------------
+function handleUniversalEscape(event){
+  if(!currentUser||event.key!=='Escape'||event.defaultPrevented||event.isComposing)return;
+  event.preventDefault();event.stopPropagation();
+
+  // Close top-most modal first. Payment state is cancelled without clearing the cart.
+  const modals=[...document.querySelectorAll('.app-modal-root')];
+  if(modals.length){
+    const top=modals[modals.length-1];
+    const paymentModal=!!top.querySelector('.pay-popup-card,#payqr,button[onclick*="confirmPromptPayPayment"]');
+    try{stopScanner()}catch(_){ }
+    top.remove();syncModalScrollLock();
+    if(paymentModal){customerDisplayStatus=null;updateCustomerDisplay()}
+    return;
+  }
+
+  // Close the hamburger/menu layer first.
+  if(menuOpen){menuOpen=false;render();return}
+
+  // Settings workspace: ESC = back one level, then leave settings.
+  if(settingsTabMode&&document.getElementById('settingsWorkspace')){
+    if(settingsWorkspaceStack.length>1)settingsWorkspaceBack();
+    else closeSettingsCenter();
+    return;
+  }
+
+  // Any main screen returns home. Cart remains untouched.
+  if(activeTab!=='dashboard'){
+    if(activeTab==='pos')saleView='products';
+    activeTab='dashboard';menuOpen=false;render();
+  }
+}
+window.addEventListener('keydown',handleUniversalEscape);
 
 // -----------------------
 // Universal Enter = Save / Confirm / Pay
