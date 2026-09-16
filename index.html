@@ -8,7 +8,7 @@
   <meta name="apple-mobile-web-app-capable" content="yes">
   <meta name="apple-mobile-web-app-status-bar-style" content="default">
   <meta name="apple-mobile-web-app-title" content="Rattana POS">
-  <title>Rattana POS - Winmax Menu Fit v6.18.48</title>
+  <title>Rattana POS - Winmax Fit v6.18.49</title>
   <script src="https://cdn.tailwindcss.com"></script>
   <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
   <script src="https://unpkg.com/html5-qrcode@2.3.8/html5-qrcode.min.js"></script>
@@ -212,6 +212,51 @@
     body[data-device="winmax"] .pos-action .ico{font-size:20px;margin-bottom:2px}
     body[data-device="winmax"] .pos-keypad button{height:40px;min-height:40px;font-size:24px}
     body[data-device="winmax"] .pos-sidekeys button{height:40px;min-height:40px;font-size:13px}
+
+    /* v6.18.49: final 1366x768/Winmax fit. Keep the sale screen inside the viewport and move Exact Cash into the configurable sale menu. */
+    @media(min-width:1180px) and (max-height:820px){
+      html,body{width:100%;height:100dvh!important;min-height:0!important;overflow:hidden!important}
+      body #app{position:fixed;inset:0;width:100%;height:100dvh!important;max-height:100dvh!important;min-height:0!important;overflow:hidden!important}
+      #app>nav{flex:0 0 auto;min-height:0}
+      #app>main.pos-main{flex:1 1 0!important;height:auto!important;min-height:0!important;overflow:hidden!important;padding:0!important}
+      .classic-pos{height:100%!important;min-height:0!important;border-width:1px;overflow:hidden!important}
+      .pos-top{height:78px!important;min-height:78px!important;margin-right:340px;padding:3px 7px}
+      .pos-work{height:calc(100% - 78px)!important;min-height:0!important;padding:2px 2px 2px;grid-template-columns:minmax(0,1fr) 340px;overflow:hidden!important}
+      .pos-left{height:100%!important;min-height:0!important;display:flex!important;flex-direction:column!important;overflow:hidden!important}
+      .pos-terminal{padding:3px!important;margin:0!important;flex:0 0 auto}
+      .pos-terminal-display{height:31px!important;font-size:15px!important;padding:2px 8px!important}
+      .pos-barcode-input{height:27px!important;font-size:14px!important;margin:1px 0 2px!important;flex:0 0 auto}
+      .pos-table-wrap{height:auto!important;min-height:120px!important;flex:1 1 0!important;overflow:auto!important}
+      .pos-grid{font-size:12px}
+      .pos-grid td{height:20px!important;padding:1px 5px!important}
+      .pos-summary{margin:0!important;flex:0 0 142px!important;height:142px!important;min-height:142px!important;max-height:142px!important;overflow:hidden!important}
+      .pos-product-preview{padding:3px!important}
+      .pos-product-icon{width:68px!important;height:58px!important;font-size:28px!important}
+      .pos-mini{font-size:11px!important;line-height:1.45!important}
+      .pos-total-area{padding:2px 6px!important;justify-content:flex-start!important}
+      .pos-totalbox{grid-template-columns:1fr 248px!important;padding:0 3px 3px!important}
+      .pos-total-label{font-size:17px!important}
+      .pos-total-number{font-size:30px!important;padding:4px 9px!important}
+      .pos-discount-note{font-size:10px!important;margin-top:1px!important}
+      .pos-payment-panel{padding:3px 6px!important;margin:0 2px 2px!important}
+      .pos-payment-row{grid-template-columns:86px 1fr 105px!important;gap:5px!important}
+      .pos-cash-input,.pos-method-select{height:30px!important;font-size:18px!important}
+      .pos-change-box{margin-top:3px!important;gap:5px!important}
+      .pos-change-number{font-size:20px!important;padding:3px 8px!important}
+      .pos-change-hint{font-size:10px!important;margin-top:1px!important}
+      .pos-actions{top:0!important;right:0!important;bottom:0!important;width:338px!important;height:auto!important;max-height:none!important;margin:0!important;padding:4px!important;gap:3px!important;border-radius:12px 0 0 12px!important;overflow:hidden!important}
+      .pos-action{height:50px!important;min-height:50px!important;font-size:11px!important;padding:2px!important;flex:0 0 calc((100% - 6px)/3)!important}
+      .pos-action .ico{font-size:18px!important;margin-bottom:1px!important}
+      .pos-action small{font-size:9px!important}
+      .pos-keyzone{gap:3px!important;margin-top:2px!important;padding-top:3px!important}
+      .pos-keypad{gap:3px!important}
+      .pos-keypad button{height:34px!important;min-height:34px!important;font-size:22px!important}
+      .pos-keypad .op,.pos-keypad .ok{font-size:21px!important}
+      .pos-keypad .clear{font-size:16px!important}
+      .pos-keypad .del{font-size:18px!important}
+      .pos-sidekeys{gap:3px!important}
+      .pos-sidekeys button{height:31px!important;min-height:31px!important;font-size:12px!important}
+    }
 </style>
 </head>
 <body class="min-h-full">
@@ -244,7 +289,7 @@ const defaultConfig = {
   promptpay_number:'0888888888', promptpay_image:'', promptpay_image_updatedAt:'', promptpay_image_deviceId:'', promptpay_image_deletedAt:'', promptpay_image_deletedBy:'', logo_image:'', logo_image_updatedAt:'', logo_image_deviceId:'', logo_image_deletedAt:'', logo_image_deletedBy:'', background_color:'#667eea', surface_color:'#ffffff', text_color:'#1f2937',
   primary_action_color:'#10b981', secondary_action_color:'#6366f1', low_stock_default:5
 };
-const DEFAULT_SALE_MENU_VISIBILITY={productPicker:true,member:true,newSale:true,summary:true,clearCart:true,heldBills:true,customerDisplay:true,holdBill:true,recall:true,promo:true,promptPay:true,addItem:true,itemDiscount:true,drawer:true,camera:true,payment:true,shiftClose:true,dayClose:true,closeSale:true,keypad:true,bankTransfer:true,settingsSide:true};
+const DEFAULT_SALE_MENU_VISIBILITY={productPicker:true,member:true,newSale:true,summary:true,clearCart:true,heldBills:true,customerDisplay:true,holdBill:true,recall:true,promo:true,promptPay:true,addItem:true,itemDiscount:true,drawer:true,camera:true,payment:true,exactCash:true,shiftClose:true,dayClose:true,closeSale:true,keypad:true,bankTransfer:true,settingsSide:true};
 const DEFAULT_TOP_NAV_SETTINGS={enabled:true,dashboard:true,pos:true,products:true,promoProducts:true,sales:true,statistics:true,labels:true,search:true,sync:true,alerts:true,user:true};
 const TOP_NAV_LABELS={dashboard:'🏠 หน้าแรก',pos:'🛒 ขายสินค้า',products:'📦 สินค้า/สต็อก',promoProducts:'🔥 สินค้าโปรโมชั่น',sales:'🧾 บิลย้อนหลัง',statistics:'📈 สถิติ/กำไร',labels:'🏷️ ป้ายราคา',search:'🔎 ค้นหา',sync:'☁️ Cloud Sync',alerts:'🔔 แจ้งเตือน',user:'👤 ชื่อผู้ใช้งาน'};
 const DEFAULT_SHORTCUTS={productPicker:'F2',member:'F3',newSale:'F4',holdBill:'F5',recall:'F6',promo:'F7',payment:'F8',camera:'F9',settings:'F10',customerDisplay:'F11'};
@@ -255,7 +300,7 @@ const DEFAULT_BANKS=[
 const DEFAULT_BANK_TRANSFER_FEE_TIERS=[{upTo:1000,fee:15},{upTo:2000,fee:20}];
 const DEFAULT_TAX_SETTINGS={enabled:true,vatRate:7,pricesIncludeVat:true,requireAssignmentOnClose:true};
 const AUTO_BACKUP_DB='rattana_pos_restore_points_v1',AUTO_BACKUP_STORE='snapshots',AUTO_BACKUP_RETENTION_DAYS=30;
-const SALE_MENU_LABELS={productPicker:'🔎 สินค้า',member:'🧑‍🤝‍🧑 สมาชิก',newSale:'🧾 เริ่มขายใหม่',summary:'📊 สรุปการขาย',clearCart:'🧹 เคลียร์บิลขาย',heldBills:'📂 บิลที่พัก',customerDisplay:'🖥️ จอลูกค้า',holdBill:'⏸️ พักบิล',recall:'🔁 เรียกบิล',promo:'🏷️ ส่วนลด/โปรโมชั่น',promptPay:'▣ QR พร้อมเพย์',addItem:'🆕 เพิ่มสินค้าในบิล',itemDiscount:'✏️ ส่วนลดรายการ',drawer:'🗄️ เปิดลิ้นชัก',camera:'📷 สแกนกล้อง',payment:'✅ รับชำระ',shiftClose:'🧮 ปิดกะ',dayClose:'🔒 ปิดยอดประจำวัน',closeSale:'⏻ ปิดหน้าขาย',keypad:'🔢 แป้นตัวเลข',bankTransfer:'🏦 โอนเงินธนาคาร',settingsSide:'⚙️ ตั้งค่าด้านข้าง'};
+const SALE_MENU_LABELS={productPicker:'🔎 สินค้า',member:'🧑‍🤝‍🧑 สมาชิก',newSale:'🧾 เริ่มขายใหม่',summary:'📊 สรุปการขาย',clearCart:'🧹 เคลียร์บิลขาย',heldBills:'📂 บิลที่พัก',customerDisplay:'🖥️ จอลูกค้า',holdBill:'⏸️ พักบิล',recall:'🔁 เรียกบิล',promo:'🏷️ ส่วนลด/โปรโมชั่น',promptPay:'▣ QR พร้อมเพย์',addItem:'🆕 เพิ่มสินค้าในบิล',itemDiscount:'✏️ ส่วนลดรายการ',drawer:'🗄️ เปิดลิ้นชัก',camera:'📷 สแกนกล้อง',payment:'✅ รับชำระ',exactCash:'💵 รับเงินพอดี',shiftClose:'🧮 ปิดกะ',dayClose:'🔒 ปิดยอดประจำวัน',closeSale:'⏻ ปิดหน้าขาย',keypad:'🔢 แป้นตัวเลข',bankTransfer:'🏦 โอนเงินธนาคาร',settingsSide:'⚙️ ตั้งค่าด้านข้าง'};
 const PERMISSION_DEFS=[
   ['sell','ขายสินค้า / รับชำระ'],['addProduct','เพิ่มสินค้าใหม่'],['editProduct','แก้ไขข้อมูลสินค้า'],['deleteProduct','ลบสินค้า'],['adjustStock','รับเข้า / ปรับสต็อก'],['discount','ให้ส่วนลด'],['returnSale','คืนสินค้า / คืนเงิน'],['voidSale','ยกเลิกบิล'],['viewSalesHistory','ดูบิลย้อนหลัง'],['viewReports','ดูสถิติ / กำไร'],['managePromotions','จัดการโปรโมชั่น'],['manageMembers','จัดการสมาชิก'],['manageSuppliers','ผู้ขาย / เจ้าหนี้'],['managePurchaseOrders','ใบสั่งซื้อ PO / รับสินค้า'],['manageBankTransfers','บริการโอนเงินธนาคาร'],['manageExpenses','ค่าใช้จ่ายร้าน'],['manageReceivables','ลูกหนี้ / ขายเชื่อ'],['viewCostHistory','ประวัติต้นทุน'],['stockCount','เช็กสต็อกจริง'],['shiftClose','ปิดยอด / ปิดกะ'],['printLabels','พิมพ์ป้ายราคา'],['viewAudit','ดูประวัติการแก้ไข'],['manageUsers','จัดการผู้ใช้ / PIN'],['dataTools','Backup / Cloud / Export'],['systemSettings','เปิดเมนูตั้งค่าระบบ'],['resetData','รีเซ็ต / ลบข้อมูล']
 ];
@@ -2140,9 +2185,9 @@ function renderPOS(){
   ${saleMenuEnabled('customerDisplay')?`<button class="pos-action blue" onclick="runPOSCommand('customerDisplay')"><span class="ico">🖥️</span>เปิดจอ<br>ลูกค้า</button>`:''}${saleMenuEnabled('holdBill')?`<button class="pos-action red" onclick="runPOSCommand('holdBill')"><span class="ico">⏸️</span>พักบิล${shortcutLabel('holdBill')?`<br><small>(${shortcutLabel('holdBill')})</small>`:''}</button>`:''}${saleMenuEnabled('recall')?`<button class="pos-action red" onclick="runPOSCommand('recall')"><span class="ico">🔁</span>เรียกบิล${shortcutLabel('recall')?`<br><small>(${shortcutLabel('recall')})</small>`:''}</button>`:''}
   ${saleMenuEnabled('promo')?`<button class="pos-action red" onclick="runPOSCommand('promo')"><span class="ico">🏷️</span>ส่วนลด/<br>โปรโมชั่น</button>`:''}${saleMenuEnabled('promptPay')?`<button class="pos-action blue" onclick="runPOSCommand('promptPay')"><span class="ico">▣</span>QR<br>พร้อมเพย์</button>`:''}${saleMenuEnabled('addItem')?`<button class="pos-action purple" onclick="runPOSCommand('addItem')"><span class="ico">🆕</span>เพิ่มสินค้า<br>ในบิล</button>`:''}
   ${saleMenuEnabled('itemDiscount')?`<button class="pos-action purple" onclick="runPOSCommand('itemDiscount')"><span class="ico">✏️</span>ส่วนลด<br>รายการ</button>`:''}${saleMenuEnabled('drawer')?`<button class="pos-action blue" onclick="runPOSCommand('drawer')"><span class="ico">🗄️</span>เปิด<br>ลิ้นชัก</button>`:''}
-  ${saleMenuEnabled('camera')?`<button class="pos-action cyan" onclick="runPOSCommand('camera')"><span class="ico">📷</span>สแกน<br>กล้อง</button>`:''}${saleMenuEnabled('payment')?`<button class="pos-action moneybtn" onclick="runPOSCommand('payment')" ${cart.length?'':'disabled'}><span class="ico">✅</span>รับชำระ<br>${c.total.toFixed(2)}${shortcutLabel('payment')?`<br><small>(${shortcutLabel('payment')})</small>`:''}</button>`:''}<button class="pos-action red" onclick="runPOSCommand('closeSale')"><span class="ico">⏻</span>ปิดหน้า<br>ขาย<small>(ESC)</small></button>
+  ${saleMenuEnabled('camera')?`<button class="pos-action cyan" onclick="runPOSCommand('camera')"><span class="ico">📷</span>สแกน<br>กล้อง</button>`:''}${saleMenuEnabled('payment')?`<button class="pos-action moneybtn" onclick="runPOSCommand('payment')" ${cart.length?'':'disabled'}><span class="ico">✅</span>รับชำระ<br>${c.total.toFixed(2)}${shortcutLabel('payment')?`<br><small>(${shortcutLabel('payment')})</small>`:''}</button>`:''}${saleMenuEnabled('exactCash')?`<button class="pos-action moneybtn" onclick="runPOSCommand('exactCash')" ${cart.length?'':'disabled'}><span class="ico">💵</span>รับเงิน<br>พอดี</button>`:''}<button class="pos-action red" onclick="runPOSCommand('closeSale')"><span class="ico">⏻</span>ปิดหน้า<br>ขาย<small>(ESC)</small></button>
   ${saleMenuEnabled('shiftClose')&&hasPermission('shiftClose')?`<button class="pos-action orange" onclick="runPOSCommand('shiftClose')"><span class="ico">🧮</span>ปิดยอด/<br>ปิดกะ</button>`:''}${saleMenuEnabled('dayClose')&&hasPermission('shiftClose')?`<button class="pos-action blue" onclick="runPOSCommand('dayClose')"><span class="ico">🔒</span>ปิดยอด<br>ประจำวัน</button>`:''}${saleMenuEnabled('bankTransfer')&&hasPermission('manageBankTransfers')?`<button class="pos-action cyan" onclick="runPOSCommand('bankTransfer')"><span class="ico">🏦</span>รายการ<br>โอนเงิน</button>`:''}
-  ${saleMenuEnabled('keypad')?`<div class="pos-keyzone"><div class="pos-keypad">${[['7',''],['8',''],['9',''],['/','op'],['4',''],['5',''],['6',''],['*','op'],['1',''],['2',''],['3',''],['-','op'],['C','clear'],['0',''],['.','op'],['+','op'],['DEL','del'],['00',''],['OK','ok']].map(x=>`<button class="${x[1]}" onclick="posKey('${x[0]}')">${x[0]==='DEL'?'⌫':x[0]==='C'?'ล้าง':x[0]}</button>`).join('')}</div><div class="pos-sidekeys"><button onclick="posCashPreset('exact')">💵 รับเงินพอดี</button>${saleMenuEnabled('settingsSide')?`<button onclick="runPOSCommand('settings')">⚙️ ตั้งค่า${shortcutLabel('settings')?` (${shortcutLabel('settings')})`:''}</button>`:''}</div></div>`:''}
+  ${saleMenuEnabled('keypad')?`<div class="pos-keyzone"><div class="pos-keypad">${[['7',''],['8',''],['9',''],['/','op'],['4',''],['5',''],['6',''],['*','op'],['1',''],['2',''],['3',''],['-','op'],['C','clear'],['0',''],['.','op'],['+','op'],['DEL','del'],['00',''],['OK','ok']].map(x=>`<button class="${x[1]}" onclick="posKey('${x[0]}')">${x[0]==='DEL'?'⌫':x[0]==='C'?'ล้าง':x[0]}</button>`).join('')}</div>${saleMenuEnabled('settingsSide')?`<div class="pos-sidekeys"><button onclick="runPOSCommand('settings')">⚙️ ตั้งค่า${shortcutLabel('settings')?` (${shortcutLabel('settings')})`:''}</button></div>`:''}</div>`:''}
 </aside></div></section>`;
 }
 
