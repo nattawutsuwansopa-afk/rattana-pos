@@ -8,7 +8,7 @@
   <meta name="apple-mobile-web-app-capable" content="yes">
   <meta name="apple-mobile-web-app-status-bar-style" content="default">
   <meta name="apple-mobile-web-app-title" content="Rattana POS">
-  <title>Rattana POS - Owner PIN Fix v6.18.58</title>
+  <title>Rattana POS - Owner Forgot PIN v6.18.59</title>
   <script src="https://cdn.tailwindcss.com"></script>
   <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
   <script src="https://unpkg.com/html5-qrcode@2.3.8/html5-qrcode.min.js"></script>
@@ -284,7 +284,7 @@ const SUPABASE_REMEMBER_EMAIL_KEY = STORAGE_KEY + '_supabase_remember_email';
 const SUPABASE_RECOVERY_PENDING_KEY = STORAGE_KEY + '_supabase_recovery_pending';
 const SUPABASE_APP_URL = 'https://nattawutsuwansopa-afk.github.io/rattana-pos/';
 const SUPABASE_AUTH_URL_AT_LOAD = location.href;
-// v6.18.58: after machine linking, force Owner PIN setup before showing existing staff.
+// v6.18.59: Owner-only forgot PIN recovery using the linked Owner email.
 const SIMPLE_PIN_READY_KEY = STORAGE_KEY + '_simple_pin_ready_v1';
 const SIMPLE_PIN_USERS_SYNCED_KEY = STORAGE_KEY + '_simple_pin_users_synced_v1';
 const LOCAL_DB_NAME = 'rattana_pos_local_permanent_v1';
@@ -582,7 +582,7 @@ function mergeStatesInBrowser(cloud,local){
 function initSupabaseClient(){
   if(supabaseClient)return supabaseClient;
   if(!window.supabase?.createClient)throw new Error('โหลด Supabase SDK ไม่สำเร็จ');
-  supabaseClient=window.supabase.createClient(SUPABASE_URL,SUPABASE_PUBLISHABLE_KEY,{auth:{persistSession:true,autoRefreshToken:true,detectSessionInUrl:true},global:{headers:{'x-rattana-pos-version':'6.18.57'}}});
+  supabaseClient=window.supabase.createClient(SUPABASE_URL,SUPABASE_PUBLISHABLE_KEY,{auth:{persistSession:true,autoRefreshToken:true,detectSessionInUrl:true},global:{headers:{'x-rattana-pos-version':'6.18.59'}}});
   return supabaseClient
 }
 function normalizeSupabaseAccess(data){
@@ -636,7 +636,7 @@ function isSupabaseRecoveryUrl(){const a=parseSupabaseAuthUrl();return a.type===
 function cleanSupabaseRecoveryUrl(){localStorage.removeItem(SUPABASE_RECOVERY_PENDING_KEY);try{history.replaceState(null,'',location.pathname)}catch(_){} }
 function supabaseLoginScreen(message='',kind='error'){
   supabaseRecoveryMode=false;supabaseBootDone=true;const app=document.getElementById('app'),msgClass=kind==='success'?'bg-emerald-50 border-emerald-200 text-emerald-700':'bg-red-50 border-red-200 text-red-700',saved=rememberedSupabaseEmail();
-  app.innerHTML=`<div class="min-h-screen flex items-center justify-center p-4" style="background:${state.config.background_color}"><div class="w-full max-w-md bg-white rounded-3xl shadow-2xl p-7"><div class="text-center mb-6"><div class="text-6xl">🔗</div><h1 class="text-2xl font-bold mt-2">เชื่อมเครื่องกับร้าน</h1><p class="text-slate-500">ทำครั้งเดียวบนเครื่องนี้</p><p class="text-xs text-emerald-700 mt-1">หลังจากนี้พนักงานเข้าใช้งานด้วยชื่อ + PIN เท่านั้น • v6.18.58</p></div>${message?`<div class="${msgClass} border rounded-xl p-3 mb-3 text-sm">${esc(message)}</div>`:''}<form autocomplete="on" onsubmit="event.preventDefault();doSupabaseLogin()"><label class="block font-semibold mb-1">อีเมลเจ้าของร้าน</label><input id="sbEmail" name="email" type="email" value="${esc(saved)}" autocomplete="username" class="w-full border rounded-xl px-4 py-3 mb-3" placeholder="owner@example.com" onkeydown="if(event.key==='Enter')document.getElementById('sbPassword').focus()"><label class="block font-semibold mb-1">รหัสผ่านบัญชีเจ้าของร้าน</label><div class="relative"><input id="sbPassword" name="password" type="password" autocomplete="current-password" class="w-full border rounded-xl pl-4 pr-12 py-3"><button type="button" onclick="toggleSupabasePassword('sbPassword',this)" class="absolute right-2 top-1/2 -translate-y-1/2 px-2 py-1 text-xl">👁️</button></div><label class="flex items-center gap-2 mt-3 text-sm"><input id="sbRememberEmail" type="checkbox" checked> จำอีเมลบนเครื่องนี้</label><button id="sbLoginBtn" type="submit" class="w-full mt-4 rounded-xl py-3 bg-emerald-600 text-white font-bold text-lg">เชื่อมเครื่องนี้กับร้าน</button></form><div class="mt-4 rounded-xl bg-sky-50 border border-sky-200 p-3 text-sm text-sky-900"><b>ง่ายแบบหน้าร้าน:</b> บัญชี Supabase ใช้เฉพาะตอนเชื่อมเครื่องครั้งแรก หลังเชื่อมสำเร็จจะไม่ถามอีเมล/รหัสผ่านทุกวันอีก พนักงานเลือกชื่อแล้วใส่ PIN 4–6 หลัก即可</div></div></div>`;
+  app.innerHTML=`<div class="min-h-screen flex items-center justify-center p-4" style="background:${state.config.background_color}"><div class="w-full max-w-md bg-white rounded-3xl shadow-2xl p-7"><div class="text-center mb-6"><div class="text-6xl">🔗</div><h1 class="text-2xl font-bold mt-2">เชื่อมเครื่องกับร้าน</h1><p class="text-slate-500">ทำครั้งเดียวบนเครื่องนี้</p><p class="text-xs text-emerald-700 mt-1">หลังจากนี้พนักงานเข้าใช้งานด้วยชื่อ + PIN เท่านั้น • v6.18.59</p></div>${message?`<div class="${msgClass} border rounded-xl p-3 mb-3 text-sm">${esc(message)}</div>`:''}<form autocomplete="on" onsubmit="event.preventDefault();doSupabaseLogin()"><label class="block font-semibold mb-1">อีเมลเจ้าของร้าน</label><input id="sbEmail" name="email" type="email" value="${esc(saved)}" autocomplete="username" class="w-full border rounded-xl px-4 py-3 mb-3" placeholder="owner@example.com" onkeydown="if(event.key==='Enter')document.getElementById('sbPassword').focus()"><label class="block font-semibold mb-1">รหัสผ่านบัญชีเจ้าของร้าน</label><div class="relative"><input id="sbPassword" name="password" type="password" autocomplete="current-password" class="w-full border rounded-xl pl-4 pr-12 py-3"><button type="button" onclick="toggleSupabasePassword('sbPassword',this)" class="absolute right-2 top-1/2 -translate-y-1/2 px-2 py-1 text-xl">👁️</button></div><label class="flex items-center gap-2 mt-3 text-sm"><input id="sbRememberEmail" type="checkbox" checked> จำอีเมลบนเครื่องนี้</label><button id="sbLoginBtn" type="submit" class="w-full mt-4 rounded-xl py-3 bg-emerald-600 text-white font-bold text-lg">เชื่อมเครื่องนี้กับร้าน</button></form><div class="mt-4 rounded-xl bg-sky-50 border border-sky-200 p-3 text-sm text-sky-900"><b>ง่ายแบบหน้าร้าน:</b> บัญชี Supabase ใช้เฉพาะตอนเชื่อมเครื่องครั้งแรก หลังเชื่อมสำเร็จจะไม่ถามอีเมล/รหัสผ่านทุกวันอีก พนักงานเลือกชื่อแล้วใส่ PIN 4–6 หลัก即可</div></div></div>`;
   setTimeout(()=>document.getElementById(saved?'sbPassword':'sbEmail')?.focus(),30)
 }
 function supabaseSignupScreen(message='',kind='error'){
@@ -765,15 +765,57 @@ function saveSimpleOwnerPin(){
   owner.name=name;owner.role='owner';owner.active=true;owner.pin=pin;localStorage.setItem(SIMPLE_PIN_READY_KEY,'1');saveState();
   currentUser={id:owner.id,name:owner.name,role:'owner'};saveSessionUser();activeTab='dashboard';menuOpen=false;render();toast('ตั้ง PIN สำเร็จ • เครื่องนี้พร้อมใช้งาน')
 }
+function ownerRecoveryEmail(){return String(supabaseSession?.user?.email||'').trim().toLowerCase()}
+function maskedOwnerEmail(){
+  const email=ownerRecoveryEmail();if(!email||!email.includes('@'))return '';
+  const [name,domain]=email.split('@');const shown=name.length<=2?name[0]+'*':name.slice(0,2)+'***'+name.slice(-1);
+  return shown+'@'+domain
+}
+function selectedSimplePinUser(){
+  const id=document.getElementById('loginUser')?.value||'';
+  return (state.users||[]).find(x=>String(x.id)===String(id)&&x.active!==false)||null
+}
+function updateOwnerForgotPinVisibility(){
+  const u=selectedSimplePinUser(),box=document.getElementById('ownerForgotPinBox');
+  if(box)box.classList.toggle('hidden',u?.role!=='owner')
+}
 function simplePinLoginScreen(message='',kind='error'){
   const owner=prepareSimplePinUsers(),app=document.getElementById('app');
   if(!/^[0-9]{4,6}$/.test(String(owner?.pin||'')))return simplePinSetupScreen(message);
-  const users=simplePinUsers();
+  const users=simplePinUsers().slice().sort((a,b)=>a.role==='owner'&&b.role!=='owner'?-1:b.role==='owner'&&a.role!=='owner'?1:String(a.name||'').localeCompare(String(b.name||''),'th'));
   if(!users.length)return simplePinSetupScreen(message);
   const msgClass=kind==='success'?'bg-emerald-50 border-emerald-200 text-emerald-700':'bg-red-50 border-red-200 text-red-700';
-  app.innerHTML=`<div class="min-h-screen flex items-center justify-center p-4" style="background:${state.config.background_color}"><div class="w-full max-w-md bg-white rounded-3xl shadow-2xl p-7"><div class="text-center mb-5"><div class="text-6xl">🛒</div><h1 class="text-2xl font-bold mt-2">${esc(state.config.store_name)}</h1><p class="text-slate-500">เลือกชื่อ • ใส่ PIN • เข้างาน</p><p class="text-xs text-emerald-700 mt-1">🟢 เครื่องเชื่อมร้านแล้ว</p></div>${message?`<div class="${msgClass} border rounded-xl p-3 mb-3 text-sm">${esc(message)}</div>`:''}<label class="block font-semibold mb-1">ผู้ใช้งาน</label><select id="loginUser" class="w-full border rounded-xl px-4 py-3 mb-3 text-lg">${users.map(u=>`<option value="${esc(u.id)}">${esc(u.name)} — ${roleName(u.role)}</option>`).join('')}</select><label class="block font-semibold mb-1">PIN</label><input id="loginPin" inputmode="numeric" type="password" maxlength="6" autocomplete="off" class="w-full border rounded-xl px-4 py-3 text-center text-3xl tracking-widest" onkeydown="if(event.key==='Enter')doLogin()"><button onclick="doLogin()" class="w-full mt-4 rounded-xl py-3 text-white font-bold text-lg" style="background:${state.config.primary_action_color}">เข้าใช้งาน</button><div class="mt-4 rounded-xl bg-slate-50 border p-3 text-xs text-slate-600">ลืม PIN ให้เจ้าของร้านเข้าเมนู <b>ตั้งค่า → ผู้ใช้งานและ PIN</b> แล้วตั้ง PIN ใหม่ได้ทันที</div></div></div>`;
-  setTimeout(()=>document.getElementById('loginPin')?.focus(),30)
+  app.innerHTML=`<div class="min-h-screen flex items-center justify-center p-4" style="background:${state.config.background_color}"><div class="w-full max-w-md bg-white rounded-3xl shadow-2xl p-7"><div class="text-center mb-5"><div class="text-6xl">🛒</div><h1 class="text-2xl font-bold mt-2">${esc(state.config.store_name)}</h1><p class="text-slate-500">เลือกชื่อ • ใส่ PIN • เข้างาน</p><p class="text-xs text-emerald-700 mt-1">🟢 เครื่องเชื่อมร้านแล้ว • v6.18.59</p></div>${message?`<div class="${msgClass} border rounded-xl p-3 mb-3 text-sm">${esc(message)}</div>`:''}<label class="block font-semibold mb-1">ผู้ใช้งาน</label><select id="loginUser" onchange="updateOwnerForgotPinVisibility()" class="w-full border rounded-xl px-4 py-3 mb-3 text-lg">${users.map(u=>`<option value="${esc(u.id)}">${esc(u.name)} — ${roleName(u.role)}</option>`).join('')}</select><label class="block font-semibold mb-1">PIN</label><input id="loginPin" inputmode="numeric" type="password" maxlength="6" autocomplete="off" class="w-full border rounded-xl px-4 py-3 text-center text-3xl tracking-widest" onkeydown="if(event.key==='Enter')doLogin()"><button onclick="doLogin()" class="w-full mt-4 rounded-xl py-3 text-white font-bold text-lg" style="background:${state.config.primary_action_color}">เข้าใช้งาน</button><div id="ownerForgotPinBox" class="hidden mt-3"><button onclick="openOwnerForgotPin()" class="w-full rounded-xl py-3 bg-amber-50 border border-amber-300 text-amber-900 font-bold">🔑 ลืม PIN เจ้าของร้าน?</button><div class="text-xs text-slate-500 text-center mt-1">ใช้ได้เฉพาะบัญชี Owner • ยืนยันด้วยอีเมลที่เชื่อมเครื่อง</div></div><div class="mt-4 rounded-xl bg-slate-50 border p-3 text-xs text-slate-600">พนักงานลืม PIN ให้เจ้าของร้านเข้า <b>ตั้งค่า → ผู้ใช้งานและ PIN</b> แล้วตั้งใหม่ให้</div></div></div>`;
+  setTimeout(()=>{updateOwnerForgotPinVisibility();document.getElementById('loginPin')?.focus()},30)
 }
+function openOwnerForgotPin(){
+  const u=selectedSimplePinUser(),owner=machineOwnerOperator(),email=ownerRecoveryEmail();
+  if(!u||u.role!=='owner')return toast('เมนูนี้ใช้เฉพาะเจ้าของร้าน',true);
+  if(!owner||String(u.id)!==String(owner.id))return toast('บัญชีนี้ไม่ใช่ Owner ที่เชื่อมเครื่อง',true);
+  if(!email)return toast('ไม่พบอีเมล Owner ที่เชื่อมเครื่อง',true);
+  modal(`<div class="bg-white rounded-2xl p-6 max-w-md mx-auto"><div class="text-center"><div class="text-5xl">🔐</div><h3 class="text-2xl font-bold mt-2">ลืม PIN เจ้าของร้าน</h3><p class="text-sm text-slate-500 mt-1">ยืนยันอีเมล Owner แล้วตั้ง PIN ใหม่</p></div><div class="mt-4 rounded-xl bg-sky-50 border border-sky-200 p-3 text-sm"><b>อีเมล Owner ที่เชื่อมเครื่อง:</b><br>${esc(maskedOwnerEmail())}</div><label class="block font-semibold mt-4 mb-1">กรอกอีเมล Owner เต็ม ๆ เพื่อยืนยัน</label><input id="ownerRecoveryEmailInput" type="email" autocomplete="username" class="w-full border rounded-xl px-4 py-3" placeholder="owner@example.com"><label class="block font-semibold mt-3 mb-1">PIN ใหม่ 4–6 หลัก</label><input id="ownerRecoveryPin" inputmode="numeric" type="password" maxlength="6" autocomplete="new-password" class="w-full border rounded-xl px-4 py-3 text-center text-3xl tracking-widest"><label class="block font-semibold mt-3 mb-1">ยืนยัน PIN ใหม่</label><input id="ownerRecoveryPin2" inputmode="numeric" type="password" maxlength="6" autocomplete="new-password" class="w-full border rounded-xl px-4 py-3 text-center text-3xl tracking-widest" onkeydown="if(event.key==='Enter')resetOwnerPinByLinkedEmail(this)"><div class="grid grid-cols-2 gap-2 mt-5"><button onclick="closeModal(this)" class="bg-slate-200 rounded-xl p-3 font-bold">ยกเลิก</button><button onclick="resetOwnerPinByLinkedEmail(this)" class="bg-emerald-600 text-white rounded-xl p-3 font-bold">ตั้ง PIN ใหม่</button></div><p class="text-xs text-slate-500 mt-3 text-center">ต้องออนไลน์ และเครื่องนี้ต้องยังเชื่อมกับบัญชี Owner อยู่</p></div>`);
+  setTimeout(()=>document.getElementById('ownerRecoveryEmailInput')?.focus(),30)
+}
+async function resetOwnerPinByLinkedEmail(btn){
+  const email=(document.getElementById('ownerRecoveryEmailInput')?.value||'').trim().toLowerCase(),pin=(document.getElementById('ownerRecoveryPin')?.value||'').trim(),pin2=(document.getElementById('ownerRecoveryPin2')?.value||'').trim(),linkedEmail=ownerRecoveryEmail();
+  if(!navigator.onLine)return toast('ต้องออนไลน์เพื่อยืนยันเจ้าของร้าน',true);
+  if(!email||email!==linkedEmail)return toast('อีเมล Owner ไม่ตรงกับบัญชีที่เชื่อมเครื่อง',true);
+  if(!/^[0-9]{4,6}$/.test(pin))return toast('PIN ต้องเป็นตัวเลข 4–6 หลัก',true);
+  if(pin!==pin2)return toast('ยืนยัน PIN ไม่ตรงกัน',true);
+  try{
+    if(btn){btn.disabled=true;btn.textContent='กำลังยืนยัน…'}
+    const db=initSupabaseClient(),check=await db.auth.getUser();if(check.error)throw check.error;
+    const user=check.data?.user;if(!user||String(user.id)!==String(supabaseSession?.user?.id||''))throw new Error('Session เจ้าของร้านหมดอายุ กรุณาเชื่อมเครื่องใหม่');
+    const access=await getSupabaseAccess(user);if(access?.status!=='approved'||access?.role!=='owner')throw new Error('บัญชีที่เชื่อมเครื่องไม่มีสิทธิ์ Owner');
+    const owner=machineOwnerOperator();if(!owner||String(owner.id)!==String(user.id))throw new Error('ไม่พบบัญชี Owner ของเครื่องนี้');
+    owner.pin=pin;owner.role='owner';owner.active=true;saveState();
+    closeModal(btn);simplePinLoginScreen('ตั้ง PIN เจ้าของร้านใหม่เรียบร้อยแล้ว','success')
+  }catch(e){
+    if(btn){btn.disabled=false;btn.textContent='ตั้ง PIN ใหม่'}
+    toast(String(e?.message||'ตั้ง PIN ใหม่ไม่สำเร็จ'),true)
+  }
+}
+
 function doSimplePinLogin(){
   const id=document.getElementById('loginUser')?.value||'',pin=document.getElementById('loginPin')?.value||'',u=(state.users||[]).find(x=>x.id===id&&x.active!==false);
   if(!u||String(u.pin||'')!==pin)return simplePinLoginScreen('PIN ไม่ถูกต้อง');
