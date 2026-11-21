@@ -8,7 +8,7 @@
   <meta name="apple-mobile-web-app-capable" content="yes">
   <meta name="apple-mobile-web-app-status-bar-style" content="default">
   <meta name="apple-mobile-web-app-title" content="Rattana POS">
-  <title>Rattana POS - User Admin Stay v6.18.65</title>
+  <title>Rattana POS - User Email Password v6.18.66</title>
   <script src="https://cdn.tailwindcss.com"></script>
   <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
   <script src="https://unpkg.com/html5-qrcode@2.3.8/html5-qrcode.min.js"></script>
@@ -728,7 +728,7 @@ function isSupabaseRecoveryUrl(){const a=parseSupabaseAuthUrl();return a.type===
 function cleanSupabaseRecoveryUrl(){localStorage.removeItem(SUPABASE_RECOVERY_PENDING_KEY);try{history.replaceState(null,'',location.pathname)}catch(_){} }
 function supabaseLoginScreen(message='',kind='error'){
   supabaseRecoveryMode=false;supabaseBootDone=true;const app=document.getElementById('app'),msgClass=kind==='success'?'bg-emerald-50 border-emerald-200 text-emerald-700':'bg-red-50 border-red-200 text-red-700',saved=rememberedSupabaseEmail();
-  app.innerHTML=`<div class="min-h-screen flex items-center justify-center p-4" style="background:${state.config.background_color}"><div class="w-full max-w-md bg-white rounded-3xl shadow-2xl p-7"><div class="text-center mb-6"><div class="text-6xl">🔗</div><h1 class="text-2xl font-bold mt-2">เชื่อมเครื่องกับร้าน</h1><p class="text-slate-500">ทำครั้งเดียวบนเครื่องนี้</p><p class="text-xs text-emerald-700 mt-1">หลังจากนี้พนักงานเข้าใช้งานด้วยชื่อ + PIN เท่านั้น • v6.18.65</p></div>${message?`<div class="${msgClass} border rounded-xl p-3 mb-3 text-sm">${esc(message)}</div>`:''}<form autocomplete="on" onsubmit="event.preventDefault();doSupabaseLogin()"><label class="block font-semibold mb-1">อีเมลเจ้าของร้าน</label><input id="sbEmail" name="email" type="email" value="${esc(saved)}" autocomplete="username" class="w-full border rounded-xl px-4 py-3 mb-3" placeholder="owner@example.com" onkeydown="if(event.key==='Enter')document.getElementById('sbPassword').focus()"><label class="block font-semibold mb-1">รหัสผ่านบัญชีเจ้าของร้าน</label><div class="relative"><input id="sbPassword" name="password" type="password" autocomplete="current-password" class="w-full border rounded-xl pl-4 pr-12 py-3"><button type="button" onclick="toggleSupabasePassword('sbPassword',this)" class="absolute right-2 top-1/2 -translate-y-1/2 px-2 py-1 text-xl">👁️</button></div><label class="flex items-center gap-2 mt-3 text-sm"><input id="sbRememberEmail" type="checkbox" checked> จำอีเมลบนเครื่องนี้</label><button id="sbLoginBtn" type="submit" class="w-full mt-4 rounded-xl py-3 bg-emerald-600 text-white font-bold text-lg">เชื่อมเครื่องนี้กับร้าน</button></form>${canUseOfflinePinAccess()?`<button type="button" onclick="enterOfflinePinMode('เข้าใช้งานจากข้อมูลที่บันทึกไว้ในเครื่อง')" class="w-full mt-2 rounded-xl py-3 bg-indigo-50 border border-indigo-300 text-indigo-900 font-bold">📴 เข้า POS ด้วย PIN ออฟไลน์</button>`:''}<button type="button" onclick="supabaseForgotPasswordScreen()" class="w-full mt-2 rounded-xl py-3 bg-amber-50 border border-amber-300 text-amber-900 font-bold">🔑 ลืมรหัสผ่านเจ้าของร้าน?</button><div class="mt-4 rounded-xl bg-sky-50 border border-sky-200 p-3 text-sm text-sky-900"><b>ง่ายแบบหน้าร้าน:</b> บัญชี Supabase ใช้เฉพาะตอนเชื่อมเครื่องครั้งแรก หลังเชื่อมสำเร็จจะไม่ถามอีเมล/รหัสผ่านทุกวันอีก พนักงานเลือกชื่อแล้วใส่ PIN 4–6 หลัก即可</div></div></div>`;
+  app.innerHTML=`<div class="min-h-screen flex items-center justify-center p-4" style="background:${state.config.background_color}"><div class="w-full max-w-md bg-white rounded-3xl shadow-2xl p-7"><div class="text-center mb-6"><div class="text-6xl">🔗</div><h1 class="text-2xl font-bold mt-2">เชื่อมเครื่องกับร้าน</h1><p class="text-slate-500">ทำครั้งเดียวบนเครื่องนี้</p><p class="text-xs text-emerald-700 mt-1">หลังเชื่อมแล้ว ผู้ใช้เข้าได้ด้วยอีเมล+รหัสผ่าน POS หรือชื่อ+PIN • v6.18.66</p></div>${message?`<div class="${msgClass} border rounded-xl p-3 mb-3 text-sm">${esc(message)}</div>`:''}<form autocomplete="on" onsubmit="event.preventDefault();doSupabaseLogin()"><label class="block font-semibold mb-1">อีเมลเจ้าของร้าน</label><input id="sbEmail" name="email" type="email" value="${esc(saved)}" autocomplete="username" class="w-full border rounded-xl px-4 py-3 mb-3" placeholder="owner@example.com" onkeydown="if(event.key==='Enter')document.getElementById('sbPassword').focus()"><label class="block font-semibold mb-1">รหัสผ่านบัญชีเจ้าของร้าน</label><div class="relative"><input id="sbPassword" name="password" type="password" autocomplete="current-password" class="w-full border rounded-xl pl-4 pr-12 py-3"><button type="button" onclick="toggleSupabasePassword('sbPassword',this)" class="absolute right-2 top-1/2 -translate-y-1/2 px-2 py-1 text-xl">👁️</button></div><label class="flex items-center gap-2 mt-3 text-sm"><input id="sbRememberEmail" type="checkbox" checked> จำอีเมลบนเครื่องนี้</label><button id="sbLoginBtn" type="submit" class="w-full mt-4 rounded-xl py-3 bg-emerald-600 text-white font-bold text-lg">เชื่อมเครื่องนี้กับร้าน</button></form>${canUseOfflinePinAccess()?`<button type="button" onclick="enterOfflinePinMode('เข้าใช้งานจากข้อมูลที่บันทึกไว้ในเครื่อง')" class="w-full mt-2 rounded-xl py-3 bg-indigo-50 border border-indigo-300 text-indigo-900 font-bold">📴 เข้า POS ด้วยบัญชีผู้ใช้ / PIN ออฟไลน์</button>`:''}<button type="button" onclick="supabaseForgotPasswordScreen()" class="w-full mt-2 rounded-xl py-3 bg-amber-50 border border-amber-300 text-amber-900 font-bold">🔑 ลืมรหัสผ่านเจ้าของร้าน?</button><div class="mt-4 rounded-xl bg-sky-50 border border-sky-200 p-3 text-sm text-sky-900"><b>ง่ายแบบหน้าร้าน:</b> บัญชี Supabase ใช้เฉพาะตอนเชื่อมเครื่องครั้งแรก หลังเชื่อมสำเร็จ ผู้ใช้เข้า POS ด้วยอีเมล+รหัสผ่าน POS หรือชื่อ+PIN ได้</div></div></div>`;
   setTimeout(()=>document.getElementById(saved?'sbPassword':'sbEmail')?.focus(),30)
 }
 function supabaseSignupScreen(message='',kind='error'){
@@ -854,7 +854,7 @@ async function doSupabaseLogin(){
 
 function simplePinUsers(){return (state.users||[]).filter(u=>u&&u.active!==false&&/^[0-9]{4,6}$/.test(String(u.pin||'')))}
 function canUseOfflinePinAccess(){
-  return localStorage.getItem(SIMPLE_PIN_READY_KEY)==='1' && simplePinUsers().length>0
+  return localStorage.getItem(SIMPLE_PIN_READY_KEY)==='1' && (simplePinUsers().length>0||hasPosPasswordUsers())
 }
 function offlinePinReason(message=''){
   const raw=String(message||'').trim();
@@ -868,6 +868,66 @@ function enterOfflinePinMode(message=''){
   return supabaseLoginScreen(offlinePinReason(message))
 }
 
+
+const POS_LOGIN_EMAIL_KEY=STORAGE_KEY+'_pos_login_email';
+function posPasswordUsers(){
+  return (state.users||[]).filter(u=>u&&u.active!==false&&normalizePosUserEmail(u.email)&&u.passwordHash&&u.passwordSalt)
+}
+function hasPosPasswordUsers(){return posPasswordUsers().length>0}
+function bytesToB64(bytes){let s='';for(const b of bytes)s+=String.fromCharCode(b);return btoa(s)}
+function b64ToBytes(s){const raw=atob(String(s||''));return Uint8Array.from(raw,c=>c.charCodeAt(0))}
+async function derivePosPasswordHash(password,saltB64,iterations=150000){
+  if(!window.crypto?.subtle)throw new Error('เบราว์เซอร์นี้ไม่รองรับระบบรหัสผ่านแบบปลอดภัย');
+  const enc=new TextEncoder(),key=await crypto.subtle.importKey('raw',enc.encode(String(password||'')),'PBKDF2',false,['deriveBits']);
+  const bits=await crypto.subtle.deriveBits({name:'PBKDF2',salt:b64ToBytes(saltB64),iterations,hash:'SHA-256'},key,256);
+  return bytesToB64(new Uint8Array(bits))
+}
+async function setPosUserPassword(user,password){
+  if(!user)throw new Error('ไม่พบผู้ใช้งาน');
+  if(String(password||'').length<8)throw new Error('รหัสผ่าน POS ต้องมีอย่างน้อย 8 ตัวอักษร');
+  const salt=crypto.getRandomValues(new Uint8Array(16)),saltB64=bytesToB64(salt),iterations=150000;
+  const hash=await derivePosPasswordHash(password,saltB64,iterations);
+  user.passwordSalt=saltB64;user.passwordHash=hash;user.passwordIterations=iterations;user.passwordUpdatedAt=new Date().toISOString();
+  return true
+}
+async function verifyPosUserPassword(user,password){
+  if(!user?.passwordHash||!user?.passwordSalt)return false;
+  const hash=await derivePosPasswordHash(password,user.passwordSalt,Math.max(50000,Number(user.passwordIterations)||150000));
+  if(hash.length!==String(user.passwordHash).length)return false;
+  let diff=0;for(let i=0;i<hash.length;i++)diff|=hash.charCodeAt(i)^String(user.passwordHash).charCodeAt(i);
+  return diff===0
+}
+function rememberedPosLoginEmail(){try{return localStorage.getItem(POS_LOGIN_EMAIL_KEY)||''}catch(e){return ''}}
+function saveRememberedPosLoginEmail(v){try{v?localStorage.setItem(POS_LOGIN_EMAIL_KEY,normalizePosUserEmail(v)):localStorage.removeItem(POS_LOGIN_EMAIL_KEY)}catch(e){}}
+function setPosLoginMode(mode){
+  const emailBox=document.getElementById('posEmailLoginBox'),pinBox=document.getElementById('posPinLoginBox'),emailBtn=document.getElementById('posEmailModeBtn'),pinBtn=document.getElementById('posPinModeBtn');
+  const emailMode=mode==='email';
+  if(emailBox)emailBox.classList.toggle('hidden',!emailMode);
+  if(pinBox)pinBox.classList.toggle('hidden',emailMode);
+  if(emailBtn)emailBtn.className=`flex-1 rounded-xl py-2.5 font-bold border ${emailMode?'bg-emerald-600 text-white border-emerald-600':'bg-white text-slate-700 border-slate-300'}`;
+  if(pinBtn)pinBtn.className=`flex-1 rounded-xl py-2.5 font-bold border ${!emailMode?'bg-indigo-600 text-white border-indigo-600':'bg-white text-slate-700 border-slate-300'}`;
+  setTimeout(()=>document.getElementById(emailMode?'posLoginEmail':'loginPin')?.focus(),30)
+}
+async function doPosEmailPasswordLogin(){
+  const email=normalizePosUserEmail(document.getElementById('posLoginEmail')?.value),password=document.getElementById('posLoginPassword')?.value||'',remember=!!document.getElementById('posRememberEmail')?.checked;
+  if(!email)return toast('กรอกอีเมลผู้ใช้งาน',true);
+  if(!password)return toast('กรอกรหัสผ่าน POS',true);
+  const u=(state.users||[]).find(x=>x.active!==false&&normalizePosUserEmail(x.email)===email);
+  if(!u)return toast('ไม่พบบัญชีอีเมลนี้ใน POS',true);
+  if(!u.passwordHash)return toast('บัญชีนี้ยังไม่ได้ตั้งรหัสผ่าน POS • ให้ Owner เข้า ตั้งค่า → ผู้ใช้งานและ PIN แล้วตั้งรหัสผ่านให้',true);
+  try{
+    const ok=await verifyPosUserPassword(u,password);
+    if(!ok)return toast('รหัสผ่าน POS ไม่ถูกต้อง',true);
+    if(remember)saveRememberedPosLoginEmail(email);else saveRememberedPosLoginEmail('');
+    currentUser={id:u.id,name:u.name,role:u.role};
+    audit('login',`เข้าสู่ระบบด้วยอีเมล + รหัสผ่าน POS${supabaseSession?.user?'':' (Offline/Local)'} • ${deviceDisplayName()}`,'session',getDeviceId());
+    saveState();saveSessionUser();lastActivityAt=Date.now();scheduleAutoLock();activeTab='dashboard';menuOpen=false;applyDeviceProfile();render();
+    toast(`ยินดีต้อนรับ ${u.name}`)
+  }catch(e){toast(String(e?.message||'ตรวจรหัสผ่านไม่สำเร็จ'),true)}
+}
+function posForgotPasswordHelp(){
+  modal(`<div class="bg-white rounded-2xl p-6 max-w-md mx-auto"><div class="text-center"><div class="text-5xl">🔑</div><h3 class="text-xl font-bold mt-2">ลืมรหัสผ่าน POS</h3></div><div class="mt-4 rounded-xl bg-sky-50 border border-sky-200 p-3 text-sm text-sky-900">ให้ <b>Owner/ผู้ดูแลระบบ</b> เข้า POS ด้วย PIN หรือบัญชี Owner แล้วไปที่ <b>ตั้งค่า → ผู้ใช้งานและ PIN → แก้ไขผู้ใช้ → ตั้งรหัสผ่าน POS ใหม่</b></div><div class="mt-3 rounded-xl bg-amber-50 border border-amber-200 p-3 text-xs text-amber-900">ระบบไม่สามารถเปิดดูรหัสผ่านเดิมได้ เพราะเก็บเฉพาะ Hash เพื่อความปลอดภัย</div><button onclick="closeModal(this)" class="w-full mt-4 bg-slate-200 rounded-xl p-3 font-bold">ปิด</button></div>`)
+}
 function machineOwnerOperator(){
   return (state.users||[]).find(u=>u&&u.active!==false&&u.role==='owner'&&u.id===String(supabaseSession?.user?.id||''))||
     (state.users||[]).find(u=>u&&u.active!==false&&u.role==='owner'&&u.id!=='u_owner')||
@@ -877,9 +937,10 @@ function prepareSimplePinUsers(){
   let owner=machineOwnerOperator();
   if(!owner){
     const name=String(supabaseSession?.user?.user_metadata?.name||supabaseSession?.user?.email?.split('@')[0]||'เจ้าของร้าน');
-    owner={id:String(supabaseSession?.user?.id||uid('u')),name,role:'owner',pin:'',active:true,permissions:{}};
+    owner={id:String(supabaseSession?.user?.id||uid('u')),name,email:normalizePosUserEmail(supabaseSession?.user?.email),role:'owner',pin:'',active:true,permissions:{}};
     state.users.push(owner)
   }
+  if(supabaseSession?.user?.email&&owner&&owner.role==='owner')owner.email=normalizePosUserEmail(supabaseSession.user.email);
   if(!localStorage.getItem(SIMPLE_PIN_READY_KEY)&&owner.id==='u_owner'&&String(owner.pin||'')==='1234')owner.pin='';
   if(!localStorage.getItem(SIMPLE_PIN_USERS_SYNCED_KEY)){
     const now=new Date().toISOString();for(const u of (state.users||[])){if(u?.id)queueSupabaseChange('users',u.id,'update',now)}
@@ -915,12 +976,40 @@ function updateOwnerForgotPinVisibility(){
 function simplePinLoginScreen(message='',kind='error'){
   const owner=prepareSimplePinUsers(),app=document.getElementById('app');
   if(!/^[0-9]{4,6}$/.test(String(owner?.pin||'')))return simplePinSetupScreen(message);
-  const users=simplePinUsers().slice().sort((a,b)=>a.role==='owner'&&b.role!=='owner'?-1:b.role==='owner'&&a.role!=='owner'?1:String(a.name||'').localeCompare(String(b.name||''),'th'));
+  const users=(state.users||[]).filter(u=>u&&u.active!==false&&(/^[0-9]{4,6}$/.test(String(u.pin||''))||u.passwordHash)).slice().sort((a,b)=>a.role==='owner'&&b.role!=='owner'?-1:b.role==='owner'&&a.role!=='owner'?1:String(a.name||'').localeCompare(String(b.name||''),'th'));
   if(!users.length)return simplePinSetupScreen(message);
   const msgClass=kind==='success'?'bg-emerald-50 border-emerald-200 text-emerald-700':'bg-red-50 border-red-200 text-red-700';
-  app.innerHTML=`<div class="min-h-screen flex items-center justify-center p-4" style="background:${state.config.background_color}"><div class="w-full max-w-md bg-white rounded-3xl shadow-2xl p-7"><div class="text-center mb-5"><div class="text-6xl">🛒</div><h1 class="text-2xl font-bold mt-2">${esc(state.config.store_name)}</h1><p class="text-slate-500">เลือกชื่อ • ใส่ PIN • เข้างาน</p><p class="text-xs text-emerald-700 mt-1">🟢 เครื่องเชื่อมร้านแล้ว • v6.18.65</p></div>${message?`<div class="${msgClass} border rounded-xl p-3 mb-3 text-sm">${esc(message)}</div>`:''}<label class="block font-semibold mb-1">ผู้ใช้งาน</label><select id="loginUser" onchange="updateOwnerForgotPinVisibility()" class="w-full border rounded-xl px-4 py-3 mb-3 text-lg">${users.map(u=>`<option value="${esc(u.id)}">${esc(u.name)}${normalizePosUserEmail(u.email)?` • ${esc(normalizePosUserEmail(u.email))}`:''} — ${roleName(u.role)}</option>`).join('')}</select><label class="block font-semibold mb-1">PIN</label><input id="loginPin" inputmode="numeric" type="password" maxlength="6" autocomplete="off" class="w-full border rounded-xl px-4 py-3 text-center text-3xl tracking-widest" onkeydown="if(event.key==='Enter')doLogin()"><button onclick="doLogin()" class="w-full mt-4 rounded-xl py-3 text-white font-bold text-lg" style="background:${state.config.primary_action_color}">เข้าใช้งาน</button><div id="ownerForgotPinBox" class="hidden mt-3 space-y-2"><button onclick="openOwnerForgotPin()" class="w-full rounded-xl py-3 bg-amber-50 border border-amber-300 text-amber-900 font-bold">🔑 ลืม PIN เจ้าของร้าน?</button><button onclick="supabaseForgotPasswordScreen()" class="w-full rounded-xl py-3 bg-sky-50 border border-sky-300 text-sky-900 font-bold">📧 ลืมรหัสผ่านบัญชี Owner?</button><div class="text-xs text-slate-500 text-center">ปุ่มนี้แสดงเฉพาะ Owner • รีเซ็ตผ่าน Rattana POS ได้</div></div><div class="mt-4 rounded-xl bg-slate-50 border p-3 text-xs text-slate-600">พนักงานลืม PIN ให้เจ้าของร้านเข้า <b>ตั้งค่า → ผู้ใช้งานและ PIN</b> แล้วตั้งใหม่ให้</div></div></div>`;
-  setTimeout(()=>{updateOwnerForgotPinVisibility();document.getElementById('loginPin')?.focus()},30)
+  const savedEmail=rememberedPosLoginEmail(),emailReady=users.some(u=>normalizePosUserEmail(u.email)&&u.passwordHash);
+  app.innerHTML=`<div class="min-h-screen flex items-center justify-center p-4" style="background:${state.config.background_color}"><div class="w-full max-w-md bg-white rounded-3xl shadow-2xl p-7">
+    <div class="text-center mb-5"><div class="text-6xl">🛒</div><h1 class="text-2xl font-bold mt-2">${esc(state.config.store_name)}</h1><p class="text-slate-500">เข้าสู่ระบบ Rattana POS</p><p class="text-xs text-emerald-700 mt-1">${supabaseSession?.user?'🟢 เครื่องเชื่อมร้านแล้ว':'🟡 โหมดข้อมูลในเครื่อง'} • v6.18.66</p></div>
+    ${message?`<div class="${msgClass} border rounded-xl p-3 mb-3 text-sm">${esc(message)}</div>`:''}
+    <div class="flex gap-2 mb-4">
+      <button id="posEmailModeBtn" onclick="setPosLoginMode('email')" class="flex-1 rounded-xl py-2.5 font-bold border">📧 อีเมล + รหัสผ่าน</button>
+      <button id="posPinModeBtn" onclick="setPosLoginMode('pin')" class="flex-1 rounded-xl py-2.5 font-bold border">🔢 ชื่อ + PIN</button>
+    </div>
+    <div id="posEmailLoginBox">
+      <label class="block font-semibold mb-1">อีเมลผู้ใช้งาน</label>
+      <input id="posLoginEmail" type="email" autocomplete="username" value="${esc(savedEmail)}" class="w-full border rounded-xl px-4 py-3 mb-3" placeholder="staff@example.com">
+      <label class="block font-semibold mb-1">รหัสผ่าน POS</label>
+      <div class="relative"><input id="posLoginPassword" type="password" autocomplete="current-password" class="w-full border rounded-xl pl-4 pr-12 py-3" onkeydown="if(event.key==='Enter')doPosEmailPasswordLogin()"><button type="button" onclick="toggleSupabasePassword('posLoginPassword',this)" class="absolute right-2 top-1/2 -translate-y-1/2 px-2 py-1 text-xl">👁️</button></div>
+      <label class="flex items-center gap-2 mt-3 text-sm"><input id="posRememberEmail" type="checkbox" ${savedEmail?'checked':''}> จำอีเมลบนเครื่องนี้</label>
+      <button onclick="doPosEmailPasswordLogin()" class="w-full mt-4 rounded-xl py-3 bg-emerald-600 text-white font-bold text-lg">เข้าใช้งานด้วยอีเมล</button>
+      <button onclick="posForgotPasswordHelp()" class="w-full mt-2 rounded-xl py-2.5 bg-amber-50 border border-amber-200 text-amber-900 font-bold">ลืมรหัสผ่าน POS?</button>
+      ${!emailReady?'<div class="mt-3 rounded-xl bg-slate-50 border p-3 text-xs text-slate-600">ยังไม่มีผู้ใช้ที่ตั้งรหัสผ่าน POS • Owner เข้าแบบ PIN แล้วตั้งรหัสให้จากเมนูผู้ใช้งานได้</div>':''}
+    </div>
+    <div id="posPinLoginBox" class="hidden">
+      <label class="block font-semibold mb-1">ผู้ใช้งาน</label>
+      <select id="loginUser" onchange="updateOwnerForgotPinVisibility()" class="w-full border rounded-xl px-4 py-3 mb-3 text-lg">${users.filter(u=>/^[0-9]{4,6}$/.test(String(u.pin||''))).map(u=>`<option value="${esc(u.id)}">${esc(u.name)}${normalizePosUserEmail(u.email)?` • ${esc(normalizePosUserEmail(u.email))}`:''} — ${roleName(u.role)}</option>`).join('')}</select>
+      <label class="block font-semibold mb-1">PIN</label>
+      <input id="loginPin" inputmode="numeric" type="password" maxlength="6" autocomplete="off" class="w-full border rounded-xl px-4 py-3 text-center text-3xl tracking-widest" onkeydown="if(event.key==='Enter')doLogin()">
+      <button onclick="doLogin()" class="w-full mt-4 rounded-xl py-3 text-white font-bold text-lg" style="background:${state.config.primary_action_color}">เข้าใช้งานด้วย PIN</button>
+      <div id="ownerForgotPinBox" class="hidden mt-3 space-y-2"><button onclick="openOwnerForgotPin()" class="w-full rounded-xl py-3 bg-amber-50 border border-amber-300 text-amber-900 font-bold">🔑 ลืม PIN เจ้าของร้าน?</button><button onclick="supabaseForgotPasswordScreen()" class="w-full rounded-xl py-3 bg-sky-50 border border-sky-300 text-sky-900 font-bold">📧 ลืมรหัสผ่านบัญชี Owner?</button><div class="text-xs text-slate-500 text-center">ปุ่มนี้แสดงเฉพาะ Owner</div></div>
+    </div>
+    <div class="mt-4 rounded-xl bg-slate-50 border p-3 text-xs text-slate-600">Owner ตั้ง/เปลี่ยนอีเมล รหัสผ่าน POS และ PIN ได้ที่ <b>ตั้งค่า → ผู้ใช้งานและ PIN</b></div>
+  </div></div>`;
+  setTimeout(()=>{setPosLoginMode(emailReady?'email':'pin');updateOwnerForgotPinVisibility()},30)
 }
+
 function openOwnerForgotPin(){
   const u=selectedSimplePinUser(),owner=machineOwnerOperator(),email=ownerRecoveryEmail();
   if(!u||u.role!=='owner')return toast('เมนูนี้ใช้เฉพาะเจ้าของร้าน',true);
@@ -1186,7 +1275,7 @@ function audit(action,details='',entityType='',entityId=''){
   state.auditLogs.unshift({id:uid('audit'),time:new Date().toISOString(),user:currentUser?.name||'ระบบ',userId:currentUser?.id||'',deviceId:getDeviceId(),deviceName:deviceDisplayName(),action,details:String(details||''),entityType:entityType||'',entityId:entityId||''});
   if(state.auditLogs.length>3000)state.auditLogs.length=3000;
 }
-function actionName(a){return ({login:'เข้าสู่ระบบ',logout:'ออกจากระบบ',sale:'ขาย / รับชำระ',discount:'ให้ส่วนลด',discount_sale:'บิลมีส่วนลด',void_sale:'ยกเลิกบิล',return_sale:'คืนสินค้า',stock_adjust:'ปรับสต็อก',stock_count:'เช็กสต็อกจริง',product_create:'เพิ่มสินค้า',product_edit:'แก้ไขสินค้า',product_delete:'ลบสินค้า',product_promo:'สินค้าโปรโมชั่น',shift_close:'ปิดกะ',supplier_create:'เพิ่มผู้ขาย',supplier_edit:'แก้ไขผู้ขาย',supplier_ledger:'เจ้าหนี้/ชำระหนี้',data_delete:'ลบข้อมูล',data_restore:'เรียกกลับข้อมูล',data_reset:'รีเซ็ตข้อมูล',member_points_earn:'รับแต้มสมาชิก',member_points_redeem:'ใช้แต้มสมาชิก',member_points_adjust:'ปรับแต้มสมาชิก',bank_transfer_create:'บันทึกโอนเงิน',bank_transfer_cancel:'ยกเลิกรายการโอนเงิน',bank_transfer_settings:'ตั้งค่าบริการโอนเงิน',tax_settings:'ตั้งค่าภาษีสินค้า',tax_bulk_assign:'กำหนดภาษีหลายสินค้า',day_close:'ปิดวัน/ล็อกยอด',day_unlock:'เปิดล็อกวัน',user_permissions:'ปรับสิทธิ์พนักงาน',user_create:'เพิ่มผู้ใช้งาน',user_edit:'แก้ไขผู้ใช้งาน',manager_approval:'อนุมัติด้วย PIN',approval_settings:'ตั้งกฎอนุมัติ',purchase_order_create:'สร้าง PO',purchase_order_receive:'รับสินค้า PO',purchase_order_cancel:'ยกเลิก PO',expense_create:'บันทึกค่าใช้จ่าย',receivable_create:'สร้างลูกหนี้',receivable_payment:'รับชำระลูกหนี้',cash_drawer_open:'เปิดลิ้นชักเงินสด',auto_lock:'ล็อกหน้าจออัตโนมัติ',health_check:'ตรวจสุขภาพระบบ',sync_error:'ซิงก์ข้อมูลผิดพลาด',system_settings:'ตั้งค่าระบบ',user_delete:'ลบผู้ใช้งาน'}[a]||a)}
+function actionName(a){return ({login:'เข้าสู่ระบบ',logout:'ออกจากระบบ',sale:'ขาย / รับชำระ',discount:'ให้ส่วนลด',discount_sale:'บิลมีส่วนลด',void_sale:'ยกเลิกบิล',return_sale:'คืนสินค้า',stock_adjust:'ปรับสต็อก',stock_count:'เช็กสต็อกจริง',product_create:'เพิ่มสินค้า',product_edit:'แก้ไขสินค้า',product_delete:'ลบสินค้า',product_promo:'สินค้าโปรโมชั่น',shift_close:'ปิดกะ',supplier_create:'เพิ่มผู้ขาย',supplier_edit:'แก้ไขผู้ขาย',supplier_ledger:'เจ้าหนี้/ชำระหนี้',data_delete:'ลบข้อมูล',data_restore:'เรียกกลับข้อมูล',data_reset:'รีเซ็ตข้อมูล',member_points_earn:'รับแต้มสมาชิก',member_points_redeem:'ใช้แต้มสมาชิก',member_points_adjust:'ปรับแต้มสมาชิก',bank_transfer_create:'บันทึกโอนเงิน',bank_transfer_cancel:'ยกเลิกรายการโอนเงิน',bank_transfer_settings:'ตั้งค่าบริการโอนเงิน',tax_settings:'ตั้งค่าภาษีสินค้า',tax_bulk_assign:'กำหนดภาษีหลายสินค้า',day_close:'ปิดวัน/ล็อกยอด',day_unlock:'เปิดล็อกวัน',user_permissions:'ปรับสิทธิ์พนักงาน',user_create:'เพิ่มผู้ใช้งาน',user_edit:'แก้ไขผู้ใช้งาน',manager_approval:'อนุมัติด้วย PIN',approval_settings:'ตั้งกฎอนุมัติ',purchase_order_create:'สร้าง PO',purchase_order_receive:'รับสินค้า PO',purchase_order_cancel:'ยกเลิก PO',expense_create:'บันทึกค่าใช้จ่าย',receivable_create:'สร้างลูกหนี้',receivable_payment:'รับชำระลูกหนี้',cash_drawer_open:'เปิดลิ้นชักเงินสด',auto_lock:'ล็อกหน้าจออัตโนมัติ',health_check:'ตรวจสุขภาพระบบ',sync_error:'ซิงก์ข้อมูลผิดพลาด',system_settings:'ตั้งค่าระบบ',user_delete:'ลบผู้ใช้งาน',user_password_reset:'ตั้ง/เปลี่ยนรหัสผ่าน POS'}[a]||a)}
 // v6.13 Login / device activity history
 function loginHistoryDefaults(){const today=new Date(),from=new Date(today);from.setDate(today.getDate()-6);return{from:from.toISOString().slice(0,10),to:today.toISOString().slice(0,10),user:'',device:'',type:'all',q:''}}
 function loginHistoryFilterValues(){const d=loginHistoryDefaults();return{from:document.getElementById('loginHistFrom')?.value||d.from,to:document.getElementById('loginHistTo')?.value||d.to,user:document.getElementById('loginHistUser')?.value||'',device:document.getElementById('loginHistDevice')?.value||'',type:document.getElementById('loginHistType')?.value||'all',q:(document.getElementById('loginHistQ')?.value||'').trim().toLowerCase()}}
@@ -1264,38 +1353,27 @@ function usersAdminHtml(){
   const ownerView=currentUser?.role==='owner';
   return `<div class="bg-white rounded-2xl p-6 max-w-6xl mx-auto max-h-[92vh] overflow-y-auto">
     <div class="flex flex-wrap justify-between items-center gap-3 mb-4">
-      <div><h3 class="text-2xl font-bold">👥 ผู้ใช้งาน / PIN / อีเมล</h3><p class="text-sm text-slate-500">เพิ่ม แก้ไข ดู PIN หรือลบผู้ใช้งานจากหน้าเดียว</p></div>
+      <div><h3 class="text-2xl font-bold">👥 ผู้ใช้งาน / อีเมล / รหัสผ่าน / PIN</h3><p class="text-sm text-slate-500">Owner จัดการบัญชีผู้ใช้งานทั้งหมดจากหน้าเดียว</p></div>
       <button onclick="closeModal(this)" class="text-3xl">×</button>
     </div>
     <div class="rounded-xl bg-sky-50 border border-sky-200 p-3 text-sm text-sky-900 mb-3">
-      พนักงานเข้า POS ด้วย <b>ชื่อ + PIN</b> • อีเมลเป็นข้อมูลประจำตัวใน POS และซิงก์ข้ามเครื่อง
+      ผู้ใช้เข้า POS ได้ 2 แบบ: <b>อีเมล + รหัสผ่าน POS</b> หรือ <b>ชื่อ + PIN</b> และข้อมูลบัญชีจะซิงก์ข้ามเครื่อง
     </div>
     <div class="rounded-xl bg-amber-50 border border-amber-200 p-3 text-xs text-amber-900 mb-4">
-      <b>หมายเหตุ:</b> Owner สามารถดู PIN ของ POS ได้ แต่ <b>รหัสผ่านบัญชี Supabase ไม่สามารถดูย้อนหลังได้</b> เพราะ Supabase ไม่เก็บรหัสจริงให้อ่าน
+      <b>รหัสผ่าน POS เปิดดูย้อนหลังไม่ได้</b> เพราะเก็บเป็น Hash เท่านั้น แต่ Owner สามารถตั้ง/เปลี่ยนรหัสใหม่ให้ทุกคนได้
     </div>
     <div class="overflow-auto border rounded-xl">
-      <table class="w-full text-sm min-w-[900px]">
+      <table class="w-full text-sm min-w-[980px]">
         <thead><tr class="bg-slate-100">
-          <th class="p-2 text-left">ชื่อ</th>
-          <th class="p-2 text-left">อีเมล</th>
-          <th class="p-2 text-center">PIN POS</th>
-          <th class="p-2 text-center">สิทธิ์</th>
-          <th class="p-2 text-center">สถานะ</th>
-          <th class="p-2 text-right">จัดการ</th>
+          <th class="p-2 text-left">ชื่อ</th><th class="p-2 text-left">อีเมล</th><th class="p-2 text-center">รหัสผ่าน POS</th><th class="p-2 text-center">PIN</th><th class="p-2 text-center">สิทธิ์</th><th class="p-2 text-center">สถานะ</th><th class="p-2 text-right">จัดการ</th>
         </tr></thead>
         <tbody>${rows.map(u=>`<tr class="border-b">
           <td class="p-2 font-semibold">${esc(u.name||'-')}</td>
           <td class="p-2 text-slate-600">${esc(normalizePosUserEmail(u.email)||'-')}</td>
-          <td class="p-2 text-center">
-            ${ownerView?`<span id="userPin_${esc(u.id)}" class="font-mono tracking-widest">••••</span>
-            <button onclick="toggleUserPinView('${u.id}',this)" class="ml-2 px-2 py-1 rounded bg-slate-100 border text-xs">👁️ ดู</button>`:'••••'}
-          </td>
-          <td class="text-center">${roleName(u.role)}</td>
-          <td class="text-center">${u.active!==false?'✅ เปิด':'⛔ ปิด'}</td>
-          <td class="text-right p-2 whitespace-nowrap">
-            <button onclick="editUser('${u.id}')" class="px-3 py-1.5 rounded bg-slate-200">แก้ไข</button>
-            ${canDeletePosUser(u)&&ownerView?`<button onclick="deletePosUser('${u.id}',this)" class="ml-1 px-3 py-1.5 rounded bg-red-50 text-red-700 border border-red-200">🗑️ ลบ</button>`:''}
-          </td>
+          <td class="p-2 text-center">${u.passwordHash?'✅ ตั้งแล้ว':'— ยังไม่ตั้ง'}</td>
+          <td class="p-2 text-center">${ownerView?`<span id="userPin_${esc(u.id)}" class="font-mono tracking-widest">••••</span><button onclick="toggleUserPinView('${u.id}',this)" class="ml-2 px-2 py-1 rounded bg-slate-100 border text-xs">👁️ ดู</button>`:'••••'}</td>
+          <td class="text-center">${roleName(u.role)}</td><td class="text-center">${u.active!==false?'✅ เปิด':'⛔ ปิด'}</td>
+          <td class="text-right p-2 whitespace-nowrap"><button onclick="editUser('${u.id}')" class="px-3 py-1.5 rounded bg-slate-200">แก้ไข / ตั้งรหัส</button>${canDeletePosUser(u)&&ownerView?`<button onclick="deletePosUser('${u.id}',this)" class="ml-1 px-3 py-1.5 rounded bg-red-50 text-red-700 border border-red-200">🗑️ ลบ</button>`:''}</td>
         </tr>`).join('')}</tbody>
       </table>
     </div>
@@ -1304,136 +1382,77 @@ function usersAdminHtml(){
 }
 function refreshUsersAdminPage(){
   if(settingsTabMode&&document.getElementById('settingsWorkspace')&&settingsWorkspaceCurrent()){
-    const page=settingsWorkspaceCurrent();
-    page.html=usersAdminHtml();
-    page.title='👥 ผู้ใช้งาน / PIN / อีเมล';
-    settingsWorkspaceShowCurrent(false);
-    return
+    const page=settingsWorkspaceCurrent();page.html=usersAdminHtml();page.title='👥 ผู้ใช้งาน / อีเมล / รหัสผ่าน / PIN';settingsWorkspaceShowCurrent(false);return
   }
-  const root=document.querySelector('.app-modal-root:last-of-type .app-modal-viewport');
-  if(root)root.innerHTML=usersAdminHtml()
+  const root=document.querySelector('.app-modal-root:last-of-type .app-modal-viewport');if(root)root.innerHTML=usersAdminHtml()
 }
 function toggleUserPinView(id,btn){
   if(currentUser?.role!=='owner')return toast('เฉพาะ Owner ที่ดู PIN ได้',true);
-  const u=state.users.find(x=>String(x.id)===String(id));if(!u)return;
-  const el=document.getElementById('userPin_'+id);if(!el)return;
-  const visible=btn?.dataset?.visible==='1';
-  el.textContent=visible?'••••':String(u.pin||'ไม่มี PIN');
-  if(btn){btn.dataset.visible=visible?'0':'1';btn.textContent=visible?'👁️ ดู':'🙈 ซ่อน'}
+  const u=state.users.find(x=>String(x.id)===String(id));if(!u)return;const el=document.getElementById('userPin_'+id);if(!el)return;
+  const visible=btn?.dataset?.visible==='1';el.textContent=visible?'••••':String(u.pin||'ไม่มี PIN');if(btn){btn.dataset.visible=visible?'0':'1';btn.textContent=visible?'👁️ ดู':'🙈 ซ่อน'}
 }
-function openUsers(){
-  if(!requirePermission('manageUsers','ไม่มีสิทธิ์จัดการผู้ใช้ / PIN'))return;
-  modal(usersAdminHtml())
-}
+function openUsers(){if(!requirePermission('manageUsers','ไม่มีสิทธิ์จัดการผู้ใช้ / PIN'))return;modal(usersAdminHtml())}
 function addUser(){
   if(!requirePermission('manageUsers','ไม่มีสิทธิ์จัดการผู้ใช้'))return;
+  const canSetPassword=currentUser?.role==='owner';
   modal(`<div class="bg-white rounded-2xl p-6 max-w-md mx-auto">
     <h3 class="text-xl font-bold mb-4">➕ เพิ่มผู้ใช้งาน</h3>
-    <label class="block text-sm font-semibold mb-1">ชื่อผู้ใช้งาน</label>
-    <input id="uName" placeholder="เช่น เจ, นัท, แคชเชียร์ 1" class="w-full border rounded-lg p-3 mb-3">
-    <label class="block text-sm font-semibold mb-1">อีเมลผู้ใช้งาน <span class="text-slate-400">(ไม่บังคับ)</span></label>
-    <input id="uEmail" type="email" autocomplete="off" placeholder="staff@example.com" class="w-full border rounded-lg p-3 mb-3">
-    <label class="block text-sm font-semibold mb-1">สิทธิ์</label>
-    <select id="uRole" class="w-full border rounded-lg p-3 mb-3">
-      <option value="cashier">แคชเชียร์</option>
-      <option value="manager">ผู้จัดการ</option>
-    </select>
-    <label class="block text-sm font-semibold mb-1">PIN 4–6 หลัก</label>
-    <div class="relative mb-4">
-      <input id="uPin" maxlength="6" placeholder="เช่น 1234" class="w-full border rounded-lg p-3 pr-12 text-center text-2xl tracking-widest" inputmode="numeric" type="password">
-      <button type="button" onclick="toggleSupabasePassword('uPin',this)" class="absolute right-2 top-1/2 -translate-y-1/2 px-2 py-1 text-xl">👁️</button>
-    </div>
-    <div class="rounded-lg bg-amber-50 border border-amber-200 p-3 text-xs text-amber-900 mb-4">
-      บัญชี <b>Owner</b> มาจากบัญชีเจ้าของร้านที่เชื่อม Supabase เท่านั้น เพื่อกันสร้าง Owner ปลอม
-    </div>
+    <label class="block text-sm font-semibold mb-1">ชื่อผู้ใช้งาน</label><input id="uName" placeholder="เช่น เจ, นัท, แคชเชียร์ 1" class="w-full border rounded-lg p-3 mb-3">
+    <label class="block text-sm font-semibold mb-1">อีเมลผู้ใช้งาน</label><input id="uEmail" type="email" autocomplete="off" placeholder="staff@example.com" class="w-full border rounded-lg p-3 mb-3">
+    <label class="block text-sm font-semibold mb-1">สิทธิ์</label><select id="uRole" class="w-full border rounded-lg p-3 mb-3"><option value="cashier">แคชเชียร์</option><option value="manager">ผู้จัดการ</option></select>
+    ${canSetPassword?`<label class="block text-sm font-semibold mb-1">รหัสผ่าน POS <span class="text-slate-400">(อย่างน้อย 8 ตัว)</span></label><div class="relative mb-3"><input id="uPassword" type="password" autocomplete="new-password" placeholder="รหัสผ่าน POS" class="w-full border rounded-lg p-3 pr-12"><button type="button" onclick="toggleSupabasePassword('uPassword',this)" class="absolute right-2 top-1/2 -translate-y-1/2 px-2 py-1 text-xl">👁️</button></div><label class="block text-sm font-semibold mb-1">ยืนยันรหัสผ่าน POS</label><input id="uPassword2" type="password" autocomplete="new-password" placeholder="พิมพ์รหัสเดิมอีกครั้ง" class="w-full border rounded-lg p-3 mb-3">`:''}
+    <label class="block text-sm font-semibold mb-1">PIN 4–6 หลัก</label><div class="relative mb-4"><input id="uPin" maxlength="6" placeholder="เช่น 1234" class="w-full border rounded-lg p-3 pr-12 text-center text-2xl tracking-widest" inputmode="numeric" type="password"><button type="button" onclick="toggleSupabasePassword('uPin',this)" class="absolute right-2 top-1/2 -translate-y-1/2 px-2 py-1 text-xl">👁️</button></div>
+    <div class="rounded-lg bg-amber-50 border border-amber-200 p-3 text-xs text-amber-900 mb-4">บัญชี <b>Owner</b> มาจากบัญชีเจ้าของร้านที่เชื่อม Supabase เท่านั้น</div>
     <div class="flex gap-2"><button onclick="closeModal(this)" class="flex-1 bg-slate-200 rounded-lg p-3">ยกเลิก</button><button onclick="saveNewUser(this)" class="flex-1 text-white rounded-lg p-3 font-bold" style="background:${state.config.primary_action_color}">บันทึก</button></div>
   </div>`)
 }
-function saveNewUser(btn){
+async function saveNewUser(btn){
   if(!requirePermission('manageUsers','ไม่มีสิทธิ์จัดการผู้ใช้'))return;
-  const name=document.getElementById('uName')?.value.trim()||'',email=normalizePosUserEmail(document.getElementById('uEmail')?.value),role=document.getElementById('uRole')?.value||'cashier',pin=document.getElementById('uPin')?.value.trim()||'';
-  if(!name)return toast('กรอกชื่อผู้ใช้งาน',true);
-  if(!isValidPosUserEmail(email))return toast('รูปแบบอีเมลไม่ถูกต้อง',true);
-  if(posUserEmailExists(email))return toast('อีเมลนี้ถูกใช้กับผู้ใช้งานคนอื่นแล้ว',true);
-  if(!/^[0-9]{4,6}$/.test(pin))return toast('PIN ต้องเป็นตัวเลข 4–6 หลัก',true);
+  const name=document.getElementById('uName')?.value.trim()||'',email=normalizePosUserEmail(document.getElementById('uEmail')?.value),role=document.getElementById('uRole')?.value||'cashier',pin=document.getElementById('uPin')?.value.trim()||'',password=document.getElementById('uPassword')?.value||'',password2=document.getElementById('uPassword2')?.value||'';
+  if(!name)return toast('กรอกชื่อผู้ใช้งาน',true);if(!email)return toast('กรอกอีเมลผู้ใช้งาน',true);if(!isValidPosUserEmail(email))return toast('รูปแบบอีเมลไม่ถูกต้อง',true);if(posUserEmailExists(email))return toast('อีเมลนี้ถูกใช้กับผู้ใช้งานคนอื่นแล้ว',true);if(!/^[0-9]{4,6}$/.test(pin))return toast('PIN ต้องเป็นตัวเลข 4–6 หลัก',true);
+  if(currentUser?.role==='owner'){if(password.length<8)return toast('รหัสผ่าน POS ต้องมีอย่างน้อย 8 ตัวอักษร',true);if(password!==password2)return toast('ยืนยันรหัสผ่าน POS ไม่ตรงกัน',true)}
   const newUser={id:uid('u'),name,email,role,pin,active:true,permissions:{}};
-  state.users.push(newUser);
-  audit('user_create',`${name} • ${email||'ไม่มีอีเมล'} • ${roleName(role)}`,'user',newUser.id);
-  saveState();
-  closeModal(btn);
-  setTimeout(()=>{refreshUsersAdminPage();toast('เพิ่มผู้ใช้งานแล้ว')},0)
+  try{
+    if(currentUser?.role==='owner')await setPosUserPassword(newUser,password);
+    state.users.push(newUser);audit('user_create',`${name} • ${email} • ${roleName(role)} • มีรหัสผ่าน POS`,'user',newUser.id);saveState();closeModal(btn);setTimeout(()=>{refreshUsersAdminPage();toast('เพิ่มผู้ใช้งานแล้ว')},0)
+  }catch(e){toast(String(e?.message||'เพิ่มผู้ใช้ไม่สำเร็จ'),true)}
 }
 function editUser(id){
-  const u=state.users.find(x=>x.id===id);if(!u)return;
-  const ownerView=currentUser?.role==='owner';
-  const currentPin=ownerView?String(u.pin||''):'';
+  const u=state.users.find(x=>x.id===id);if(!u)return;const ownerView=currentUser?.role==='owner',currentPin=ownerView?String(u.pin||''):'';
   modal(`<div class="bg-white rounded-2xl p-6 max-w-md mx-auto">
     <h3 class="text-xl font-bold mb-4">✏️ แก้ไข ${esc(u.name)}</h3>
-    <label class="block text-sm font-semibold mb-1">ชื่อผู้ใช้งาน</label>
-    <input id="euName" value="${esc(u.name||'')}" class="w-full border rounded-lg p-3 mb-3">
-    <label class="block text-sm font-semibold mb-1">อีเมลผู้ใช้งาน <span class="text-slate-400">(ไม่บังคับ)</span></label>
-    <input id="euEmail" type="email" autocomplete="off" value="${esc(normalizePosUserEmail(u.email))}" placeholder="staff@example.com" class="w-full border rounded-lg p-3 mb-3">
-    <label class="block text-sm font-semibold mb-1">สิทธิ์</label>
-    <select id="euRole" class="w-full border rounded-lg p-3 mb-3" ${u.role==='owner'?'disabled':''}>
-      <option value="cashier" ${u.role==='cashier'?'selected':''}>แคชเชียร์</option>
-      <option value="manager" ${u.role==='manager'?'selected':''}>ผู้จัดการ</option>
-      ${u.role==='owner'?'<option value="owner" selected>เจ้าของร้าน</option>':''}
-    </select>
-    <label class="block text-sm font-semibold mb-1">${ownerView?'PIN POS':'PIN ใหม่'} <span class="text-slate-400">${ownerView?'(กด 👁️ เพื่อดู / แก้ได้เลย)':'(เว้นว่างถ้าไม่เปลี่ยน)'}</span></label>
-    <div class="relative mb-3">
-      <input id="euPin" maxlength="6" value="${esc(currentPin)}" placeholder="PIN 4–6 หลัก" class="w-full border rounded-lg p-3 pr-12 text-center text-2xl tracking-widest" inputmode="numeric" type="password">
-      ${ownerView?`<button type="button" onclick="toggleSupabasePassword('euPin',this)" class="absolute right-2 top-1/2 -translate-y-1/2 px-2 py-1 text-xl">👁️</button>`:''}
-    </div>
+    <label class="block text-sm font-semibold mb-1">ชื่อผู้ใช้งาน</label><input id="euName" value="${esc(u.name||'')}" class="w-full border rounded-lg p-3 mb-3">
+    <label class="block text-sm font-semibold mb-1">อีเมลผู้ใช้งาน</label><input id="euEmail" type="email" autocomplete="off" value="${esc(normalizePosUserEmail(u.email))}" placeholder="staff@example.com" class="w-full border rounded-lg p-3 mb-3">
+    <label class="block text-sm font-semibold mb-1">สิทธิ์</label><select id="euRole" class="w-full border rounded-lg p-3 mb-3" ${u.role==='owner'?'disabled':''}><option value="cashier" ${u.role==='cashier'?'selected':''}>แคชเชียร์</option><option value="manager" ${u.role==='manager'?'selected':''}>ผู้จัดการ</option>${u.role==='owner'?'<option value="owner" selected>เจ้าของร้าน</option>':''}</select>
+    ${ownerView?`<div class="rounded-xl border p-3 mb-3 ${u.passwordHash?'bg-emerald-50 border-emerald-200':'bg-amber-50 border-amber-200'}"><b>${u.passwordHash?'✅ มีรหัสผ่าน POS แล้ว':'⚠️ ยังไม่ได้ตั้งรหัสผ่าน POS'}</b><div class="text-xs mt-1 text-slate-600">เว้นช่องด้านล่างไว้ถ้าไม่ต้องการเปลี่ยน</div></div><label class="block text-sm font-semibold mb-1">ตั้ง/เปลี่ยนรหัสผ่าน POS</label><div class="relative mb-3"><input id="euPassword" type="password" autocomplete="new-password" placeholder="อย่างน้อย 8 ตัวอักษร" class="w-full border rounded-lg p-3 pr-12"><button type="button" onclick="toggleSupabasePassword('euPassword',this)" class="absolute right-2 top-1/2 -translate-y-1/2 px-2 py-1 text-xl">👁️</button></div><label class="block text-sm font-semibold mb-1">ยืนยันรหัสผ่านใหม่</label><input id="euPassword2" type="password" autocomplete="new-password" placeholder="พิมพ์รหัสใหม่อีกครั้ง" class="w-full border rounded-lg p-3 mb-3">`:''}
+    <label class="block text-sm font-semibold mb-1">${ownerView?'PIN POS':'PIN ใหม่'} <span class="text-slate-400">${ownerView?'(กด 👁️ เพื่อดู / แก้ได้เลย)':'(เว้นว่างถ้าไม่เปลี่ยน)'}</span></label><div class="relative mb-3"><input id="euPin" maxlength="6" value="${esc(currentPin)}" placeholder="PIN 4–6 หลัก" class="w-full border rounded-lg p-3 pr-12 text-center text-2xl tracking-widest" inputmode="numeric" type="password">${ownerView?`<button type="button" onclick="toggleSupabasePassword('euPin',this)" class="absolute right-2 top-1/2 -translate-y-1/2 px-2 py-1 text-xl">👁️</button>`:''}</div>
     <label class="flex gap-2 mb-4 items-center"><input id="euActive" type="checkbox" class="w-5 h-5" ${u.active!==false?'checked':''} ${u.role==='owner'?'disabled':''}> เปิดใช้งาน</label>
     ${u.role==='owner'?'<div class="rounded-lg bg-amber-50 border border-amber-200 p-3 text-xs text-amber-900 mb-4">Owner หลักยังกันลบ/ปิด/ลดสิทธิ์ เพื่อป้องกันร้านถูกล็อกออกจากระบบ</div>':''}
     <div class="flex gap-2"><button onclick="closeModal(this)" class="flex-1 bg-slate-200 rounded p-3">ยกเลิก</button><button onclick="saveEditUser('${u.id}',this)" class="flex-1 text-white rounded p-3 font-bold" style="background:${state.config.primary_action_color}">บันทึก</button></div>
     ${canDeletePosUser(u)&&ownerView?`<button onclick="deletePosUserFromEdit('${u.id}',this)" class="w-full mt-3 bg-red-50 text-red-700 border border-red-200 rounded-xl p-3 font-bold">🗑️ ลบบัญชีผู้ใช้งานนี้</button>`:''}
   </div>`)
 }
-function saveEditUser(id,btn){
+async function saveEditUser(id,btn){
   if(!requirePermission('manageUsers','ไม่มีสิทธิ์จัดการผู้ใช้'))return;
   const u=state.users.find(x=>x.id===id);if(!u)return;
-  const name=document.getElementById('euName')?.value.trim()||u.name,email=normalizePosUserEmail(document.getElementById('euEmail')?.value),pin=document.getElementById('euPin')?.value.trim()||'';
-  if(!name)return toast('กรอกชื่อผู้ใช้งาน',true);
-  if(!isValidPosUserEmail(email))return toast('รูปแบบอีเมลไม่ถูกต้อง',true);
-  if(posUserEmailExists(email,id))return toast('อีเมลนี้ถูกใช้กับผู้ใช้งานคนอื่นแล้ว',true);
-  if(pin&&!/^[0-9]{4,6}$/.test(pin))return toast('PIN ต้องเป็นตัวเลข 4–6 หลัก',true);
-  const before={name:u.name,email:normalizePosUserEmail(u.email),role:u.role,active:u.active!==false,pin:String(u.pin||'')};
-  const nextRole=u.role==='owner'?'owner':(document.getElementById('euRole')?.value||u.role);
-  const nextActive=u.role==='owner'?true:(document.getElementById('euActive')?.checked!==false);
-  u.name=name;u.email=email;u.role=nextRole;u.active=nextActive;if(pin)u.pin=pin;
-  const changes=[];
-  if(before.name!==u.name)changes.push(`ชื่อ ${before.name} → ${u.name}`);
-  if(before.email!==u.email)changes.push(`อีเมล ${before.email||'-'} → ${u.email||'-'}`);
-  if(before.role!==u.role)changes.push(`สิทธิ์ ${roleName(before.role)} → ${roleName(u.role)}`);
-  if(before.active!==u.active)changes.push(u.active?'เปิดใช้งาน':'ปิดใช้งาน');
-  if(before.pin!==String(u.pin||''))changes.push('เปลี่ยน PIN');
-  audit('user_edit',`${u.name} • ${changes.join(' • ')||'บันทึกข้อมูลผู้ใช้'}`,'user',u.id);
-  if(currentUser&&String(currentUser.id)===String(u.id))currentUser={id:u.id,name:u.name,role:u.role};
-  saveState();saveSessionUser();
-  closeModal(btn);
-  setTimeout(()=>{refreshUsersAdminPage();toast('บันทึกผู้ใช้แล้ว')},0)
+  const name=document.getElementById('euName')?.value.trim()||u.name,email=normalizePosUserEmail(document.getElementById('euEmail')?.value),pin=document.getElementById('euPin')?.value.trim()||'',password=document.getElementById('euPassword')?.value||'',password2=document.getElementById('euPassword2')?.value||'';
+  if(!name)return toast('กรอกชื่อผู้ใช้งาน',true);if(!email)return toast('กรอกอีเมลผู้ใช้งาน',true);if(!isValidPosUserEmail(email))return toast('รูปแบบอีเมลไม่ถูกต้อง',true);if(posUserEmailExists(email,id))return toast('อีเมลนี้ถูกใช้กับผู้ใช้งานคนอื่นแล้ว',true);if(pin&&!/^[0-9]{4,6}$/.test(pin))return toast('PIN ต้องเป็นตัวเลข 4–6 หลัก',true);
+  if(password){if(currentUser?.role!=='owner')return toast('เฉพาะ Owner ที่ตั้งรหัสผ่าน POS ได้',true);if(password.length<8)return toast('รหัสผ่าน POS ต้องมีอย่างน้อย 8 ตัวอักษร',true);if(password!==password2)return toast('ยืนยันรหัสผ่าน POS ไม่ตรงกัน',true)}
+  const before={name:u.name,email:normalizePosUserEmail(u.email),role:u.role,active:u.active!==false,pin:String(u.pin||'')},nextRole=u.role==='owner'?'owner':(document.getElementById('euRole')?.value||u.role),nextActive=u.role==='owner'?true:(document.getElementById('euActive')?.checked!==false);
+  try{
+    u.name=name;u.email=email;u.role=nextRole;u.active=nextActive;if(pin)u.pin=pin;if(password){await setPosUserPassword(u,password);audit('user_password_reset',`${u.name} • ${u.email}`,'user',u.id)}
+    const changes=[];if(before.name!==u.name)changes.push(`ชื่อ ${before.name} → ${u.name}`);if(before.email!==u.email)changes.push(`อีเมล ${before.email||'-'} → ${u.email||'-'}`);if(before.role!==u.role)changes.push(`สิทธิ์ ${roleName(before.role)} → ${roleName(u.role)}`);if(before.active!==u.active)changes.push(u.active?'เปิดใช้งาน':'ปิดใช้งาน');if(before.pin!==String(u.pin||''))changes.push('เปลี่ยน PIN');if(password)changes.push('ตั้ง/เปลี่ยนรหัสผ่าน POS');
+    audit('user_edit',`${u.name} • ${changes.join(' • ')||'บันทึกข้อมูลผู้ใช้'}`,'user',u.id);if(currentUser&&String(currentUser.id)===String(u.id))currentUser={id:u.id,name:u.name,role:u.role};saveState();saveSessionUser();closeModal(btn);setTimeout(()=>{refreshUsersAdminPage();toast('บันทึกผู้ใช้แล้ว')},0)
+  }catch(e){toast(String(e?.message||'บันทึกผู้ใช้ไม่สำเร็จ'),true)}
 }
 function deletePosUserCore(id){
   if(!requireRole(['owner'])){toast('เฉพาะเจ้าของร้านที่ลบผู้ใช้งานได้',true);return false}
-  const u=state.users.find(x=>String(x.id)===String(id));if(!u)return false;
-  if(u.role==='owner'){toast('ไม่สามารถลบบัญชี Owner หลักได้',true);return false}
-  if(currentUser&&String(currentUser.id)===String(u.id)){toast('ไม่สามารถลบบัญชีที่กำลังใช้งานอยู่',true);return false}
+  const u=state.users.find(x=>String(x.id)===String(id));if(!u)return false;if(u.role==='owner'){toast('ไม่สามารถลบบัญชี Owner หลักได้',true);return false}if(currentUser&&String(currentUser.id)===String(u.id)){toast('ไม่สามารถลบบัญชีที่กำลังใช้งานอยู่',true);return false}
   if(!confirm(`ลบผู้ใช้งาน "${u.name}" ออกจากระบบ?\n\nประวัติการขายและ Audit เดิมจะยังคงอยู่`))return false;
-  state.users=state.users.filter(x=>String(x.id)!==String(id));
-  audit('user_delete',`${u.name} • ${normalizePosUserEmail(u.email)||'ไม่มีอีเมล'} • ${roleName(u.role)}`,'user',id);
-  saveState();return true
+  state.users=state.users.filter(x=>String(x.id)!==String(id));audit('user_delete',`${u.name} • ${normalizePosUserEmail(u.email)||'ไม่มีอีเมล'} • ${roleName(u.role)}`,'user',id);saveState();return true
 }
-function deletePosUser(id,btn){
-  if(!deletePosUserCore(id))return;
-  refreshUsersAdminPage();
-  toast('ลบผู้ใช้งานแล้ว')
-}
-function deletePosUserFromEdit(id,btn){
-  if(!deletePosUserCore(id))return;
-  closeModal(btn);
-  setTimeout(()=>{refreshUsersAdminPage();toast('ลบผู้ใช้งานแล้ว')},0)
-}
+function deletePosUser(id,btn){if(!deletePosUserCore(id))return;refreshUsersAdminPage();toast('ลบผู้ใช้งานแล้ว')}
+function deletePosUserFromEdit(id,btn){if(!deletePosUserCore(id))return;closeModal(btn);setTimeout(()=>{refreshUsersAdminPage();toast('ลบผู้ใช้งานแล้ว')},0)}
 
 
 function permissionLabel(key){return (PERMISSION_DEFS.find(x=>x[0]===key)||[key,key])[1]}
