@@ -8,7 +8,7 @@
   <meta name="apple-mobile-web-app-capable" content="yes">
   <meta name="apple-mobile-web-app-status-bar-style" content="default">
   <meta name="apple-mobile-web-app-title" content="Rattana POS">
-  <title>Rattana POS - Stability Pack v6.18.60</title>
+  <title>Rattana POS - Safe Machine Link v6.18.64</title>
   <script src="https://cdn.tailwindcss.com"></script>
   <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
   <script src="https://unpkg.com/html5-qrcode@2.3.8/html5-qrcode.min.js"></script>
@@ -351,6 +351,43 @@ let memberPointRedemption={points:0,baht:0};
 let bestSellerPeriod='30', bestSellerMetric='qty', bestSellerFrom='', bestSellerTo='';
 
 function safeColor(v,fallback){return /^#[0-9a-fA-F]{6}$/.test(String(v||''))?String(v):fallback}
+let appBrandingIconKey='';
+function fallbackAppIconData(){
+  const store=String(state?.config?.store_name||'Rattana POS').trim(),letter=(store.replace(/^ร้าน/,'').trim()[0]||'R').toUpperCase();
+  const bg=safeColor(state?.config?.primary_action_color,'#10b981');
+  const svg=`<svg xmlns="http://www.w3.org/2000/svg" width="512" height="512" viewBox="0 0 512 512"><rect width="512" height="512" rx="112" fill="${bg}"/><rect x="72" y="86" width="368" height="340" rx="42" fill="white" opacity=".96"/><path d="M112 178h288l-22-66H134z" fill="${bg}" opacity=".92"/><text x="256" y="335" text-anchor="middle" font-family="Arial,Tahoma,sans-serif" font-size="168" font-weight="800" fill="${bg}">${letter}</text></svg>`;
+  return 'data:image/svg+xml;charset=utf-8,'+encodeURIComponent(svg)
+}
+function appIconSource(){return safeProductImage(state?.config?.logo_image)||fallbackAppIconData()}
+function ensureHeadLink(rel,id){
+  let el=document.getElementById(id);if(!el){el=document.createElement('link');el.id=id;el.rel=rel;document.head.appendChild(el)}return el
+}
+function updateAppBrandingIcon(force=false){
+  try{
+    const src=appIconSource(),name=String(state?.config?.store_name||'Rattana POS').trim()||'Rattana POS';
+    const key=(src||'').slice(0,120)+'|'+name+'|'+state?.config?.primary_action_color;
+    if(!force&&key===appBrandingIconKey)return;
+    appBrandingIconKey=key;
+    const icon=ensureHeadLink('icon','rattanaAppIcon');icon.href=src;
+    const apple=ensureHeadLink('apple-touch-icon','rattanaAppleIcon');apple.href=src;
+    let appName=document.querySelector('meta[name="application-name"]');if(!appName){appName=document.createElement('meta');appName.name='application-name';document.head.appendChild(appName)}appName.content=name+' POS';
+    let appleName=document.querySelector('meta[name="apple-mobile-web-app-title"]');if(appleName)appleName.content=name;
+    let theme=document.querySelector('meta[name="theme-color"]');if(theme)theme.content=safeColor(state?.config?.primary_action_color,'#10b981');
+    const manifest={
+      name:name+' POS',
+      short_name:name.length>18?'Rattana POS':name,
+      start_url:'./',
+      scope:'./',
+      display:'standalone',
+      background_color:safeColor(state?.config?.background_color,'#667eea'),
+      theme_color:safeColor(state?.config?.primary_action_color,'#10b981'),
+      icons:[{src:src,sizes:'any',purpose:'any maskable'}]
+    };
+    const manifestLink=ensureHeadLink('manifest','rattanaDynamicManifest');
+    manifestLink.href='data:application/manifest+json;charset=utf-8,'+encodeURIComponent(JSON.stringify(manifest));
+  }catch(e){console.warn('App branding icon skipped',e)}
+}
+
 function hexRgb(hex){const v=safeColor(hex,'#000000').slice(1);return [parseInt(v.slice(0,2),16),parseInt(v.slice(2,4),16),parseInt(v.slice(4,6),16)]}
 function colorLuminance(hex){const [r,g,b]=hexRgb(hex).map(v=>{v/=255;return v<=.03928?v/12.92:Math.pow((v+.055)/1.055,2.4)});return .2126*r+.7152*g+.0722*b}
 function colorContrast(a,b){const x=colorLuminance(a),y=colorLuminance(b),hi=Math.max(x,y),lo=Math.min(x,y);return (hi+.05)/(lo+.05)}
@@ -621,7 +658,7 @@ function ensureSupabaseLocalUser(user,membership){
 function supabaseStatusText(){
   if(!SUPABASE_ENABLED)return localPermanentStatusText();
   if(!supabaseBootDone)return '☁️ กำลังเชื่อม Supabase…';
-  if(!supabaseSession?.user)return '🔗 เครื่องนี้ยังไม่ได้เชื่อมร้าน';
+  if(!supabaseSession?.user)return canUseOfflinePinAccess()?'🟡 PIN Offline • คลาวด์ยังไม่เชื่อม':'🔗 เครื่องนี้ยังไม่ได้เชื่อมร้าน';
   if(!currentUser)return '🟢 เครื่องเชื่อมร้านแล้ว • รอผู้ใช้ใส่ PIN';
   if(!navigator.onLine)return `📴 ออฟไลน์ • ใช้ข้อมูลในเครื่อง • รอส่ง ${getSupabaseQueue().length} รายการ`;
   if(supabaseSyncBusy)return '☁️ กำลังซิงก์ Supabase…';
@@ -635,7 +672,7 @@ function supabaseStatusInfo(){
   const pending=getSupabaseQueue().length,last=localStorage.getItem(SUPABASE_LAST_SYNC_KEY),err=supabaseLastError(),lastTs=Date.parse(last||0)||0,errTs=Date.parse(err?.time||0)||0;
   if(!SUPABASE_ENABLED)return {tone:'slate',icon:'💾',text:'Local',detail:localPermanentStatusText()};
   if(!supabaseBootDone)return {tone:'amber',icon:'🟡',text:'กำลังเชื่อม',detail:'กำลังเริ่ม Supabase'};
-  if(!supabaseSession?.user)return {tone:'red',icon:'🔴',text:'ยังไม่เชื่อม',detail:'เครื่องนี้ยังไม่ได้เชื่อมร้าน'};
+  if(!supabaseSession?.user)return canUseOfflinePinAccess()?{tone:'amber',icon:'🟡',text:'PIN Offline',detail:'เข้า POS ได้จากข้อมูลในเครื่อง • Owner เชื่อม Supabase ใหม่เพื่อกลับมาซิงก์'}:{tone:'red',icon:'🔴',text:'ยังไม่เชื่อม',detail:'เครื่องนี้ยังไม่ได้เชื่อมร้าน'};
   if(!navigator.onLine)return {tone:'red',icon:'🔴',text:`ออฟไลน์${pending?` • ${pending} รอส่ง`:''}`,detail:'ข้อมูลยังเก็บในเครื่องและจะส่งเมื่อออนไลน์'};
   if(supabaseSyncBusy)return {tone:'amber',icon:'🟡',text:'กำลังซิงก์',detail:'กำลังตรวจและส่งข้อมูล'};
   if(err&&errTs>lastTs)return {tone:'red',icon:'🔴',text:'ซิงก์มีปัญหา',detail:String(err.message||'ซิงก์ไม่สำเร็จ')};
@@ -691,7 +728,7 @@ function isSupabaseRecoveryUrl(){const a=parseSupabaseAuthUrl();return a.type===
 function cleanSupabaseRecoveryUrl(){localStorage.removeItem(SUPABASE_RECOVERY_PENDING_KEY);try{history.replaceState(null,'',location.pathname)}catch(_){} }
 function supabaseLoginScreen(message='',kind='error'){
   supabaseRecoveryMode=false;supabaseBootDone=true;const app=document.getElementById('app'),msgClass=kind==='success'?'bg-emerald-50 border-emerald-200 text-emerald-700':'bg-red-50 border-red-200 text-red-700',saved=rememberedSupabaseEmail();
-  app.innerHTML=`<div class="min-h-screen flex items-center justify-center p-4" style="background:${state.config.background_color}"><div class="w-full max-w-md bg-white rounded-3xl shadow-2xl p-7"><div class="text-center mb-6"><div class="text-6xl">🔗</div><h1 class="text-2xl font-bold mt-2">เชื่อมเครื่องกับร้าน</h1><p class="text-slate-500">ทำครั้งเดียวบนเครื่องนี้</p><p class="text-xs text-emerald-700 mt-1">หลังจากนี้พนักงานเข้าใช้งานด้วยชื่อ + PIN เท่านั้น • v6.18.60</p></div>${message?`<div class="${msgClass} border rounded-xl p-3 mb-3 text-sm">${esc(message)}</div>`:''}<form autocomplete="on" onsubmit="event.preventDefault();doSupabaseLogin()"><label class="block font-semibold mb-1">อีเมลเจ้าของร้าน</label><input id="sbEmail" name="email" type="email" value="${esc(saved)}" autocomplete="username" class="w-full border rounded-xl px-4 py-3 mb-3" placeholder="owner@example.com" onkeydown="if(event.key==='Enter')document.getElementById('sbPassword').focus()"><label class="block font-semibold mb-1">รหัสผ่านบัญชีเจ้าของร้าน</label><div class="relative"><input id="sbPassword" name="password" type="password" autocomplete="current-password" class="w-full border rounded-xl pl-4 pr-12 py-3"><button type="button" onclick="toggleSupabasePassword('sbPassword',this)" class="absolute right-2 top-1/2 -translate-y-1/2 px-2 py-1 text-xl">👁️</button></div><label class="flex items-center gap-2 mt-3 text-sm"><input id="sbRememberEmail" type="checkbox" checked> จำอีเมลบนเครื่องนี้</label><button id="sbLoginBtn" type="submit" class="w-full mt-4 rounded-xl py-3 bg-emerald-600 text-white font-bold text-lg">เชื่อมเครื่องนี้กับร้าน</button></form><div class="mt-4 rounded-xl bg-sky-50 border border-sky-200 p-3 text-sm text-sky-900"><b>ง่ายแบบหน้าร้าน:</b> บัญชี Supabase ใช้เฉพาะตอนเชื่อมเครื่องครั้งแรก หลังเชื่อมสำเร็จจะไม่ถามอีเมล/รหัสผ่านทุกวันอีก พนักงานเลือกชื่อแล้วใส่ PIN 4–6 หลัก即可</div></div></div>`;
+  app.innerHTML=`<div class="min-h-screen flex items-center justify-center p-4" style="background:${state.config.background_color}"><div class="w-full max-w-md bg-white rounded-3xl shadow-2xl p-7"><div class="text-center mb-6"><div class="text-6xl">🔗</div><h1 class="text-2xl font-bold mt-2">เชื่อมเครื่องกับร้าน</h1><p class="text-slate-500">ทำครั้งเดียวบนเครื่องนี้</p><p class="text-xs text-emerald-700 mt-1">หลังจากนี้พนักงานเข้าใช้งานด้วยชื่อ + PIN เท่านั้น • v6.18.64</p></div>${message?`<div class="${msgClass} border rounded-xl p-3 mb-3 text-sm">${esc(message)}</div>`:''}<form autocomplete="on" onsubmit="event.preventDefault();doSupabaseLogin()"><label class="block font-semibold mb-1">อีเมลเจ้าของร้าน</label><input id="sbEmail" name="email" type="email" value="${esc(saved)}" autocomplete="username" class="w-full border rounded-xl px-4 py-3 mb-3" placeholder="owner@example.com" onkeydown="if(event.key==='Enter')document.getElementById('sbPassword').focus()"><label class="block font-semibold mb-1">รหัสผ่านบัญชีเจ้าของร้าน</label><div class="relative"><input id="sbPassword" name="password" type="password" autocomplete="current-password" class="w-full border rounded-xl pl-4 pr-12 py-3"><button type="button" onclick="toggleSupabasePassword('sbPassword',this)" class="absolute right-2 top-1/2 -translate-y-1/2 px-2 py-1 text-xl">👁️</button></div><label class="flex items-center gap-2 mt-3 text-sm"><input id="sbRememberEmail" type="checkbox" checked> จำอีเมลบนเครื่องนี้</label><button id="sbLoginBtn" type="submit" class="w-full mt-4 rounded-xl py-3 bg-emerald-600 text-white font-bold text-lg">เชื่อมเครื่องนี้กับร้าน</button></form>${canUseOfflinePinAccess()?`<button type="button" onclick="enterOfflinePinMode('เข้าใช้งานจากข้อมูลที่บันทึกไว้ในเครื่อง')" class="w-full mt-2 rounded-xl py-3 bg-indigo-50 border border-indigo-300 text-indigo-900 font-bold">📴 เข้า POS ด้วย PIN ออฟไลน์</button>`:''}<button type="button" onclick="supabaseForgotPasswordScreen()" class="w-full mt-2 rounded-xl py-3 bg-amber-50 border border-amber-300 text-amber-900 font-bold">🔑 ลืมรหัสผ่านเจ้าของร้าน?</button><div class="mt-4 rounded-xl bg-sky-50 border border-sky-200 p-3 text-sm text-sky-900"><b>ง่ายแบบหน้าร้าน:</b> บัญชี Supabase ใช้เฉพาะตอนเชื่อมเครื่องครั้งแรก หลังเชื่อมสำเร็จจะไม่ถามอีเมล/รหัสผ่านทุกวันอีก พนักงานเลือกชื่อแล้วใส่ PIN 4–6 หลัก即可</div></div></div>`;
   setTimeout(()=>document.getElementById(saved?'sbPassword':'sbEmail')?.focus(),30)
 }
 function supabaseSignupScreen(message='',kind='error'){
@@ -715,6 +752,32 @@ async function doSupabaseSignup(){
     if(access?.status==='approved')return completeSupabaseSession(session,true);
     supabaseAccessPendingScreen(session.user,access,'สมัครสำเร็จ • ส่งคำขอเข้าร้านแล้ว');
   }catch(e){console.warn(e);supabaseSignupScreen(String(e?.message||'สมัครบัญชีไม่สำเร็จ'))}
+}
+
+function supabaseForgotPasswordScreen(message='',kind='error'){
+  const app=document.getElementById('app'),saved=(rememberedSupabaseEmail()||ownerRecoveryEmail()||'').trim().toLowerCase(),msgClass=kind==='success'?'bg-emerald-50 border-emerald-200 text-emerald-700':'bg-red-50 border-red-200 text-red-700';
+  supabaseRecoveryMode=true;supabaseBootDone=true;
+  app.innerHTML=`<div class="min-h-screen flex items-center justify-center p-4" style="background:${state.config.background_color}"><div class="w-full max-w-md bg-white rounded-3xl shadow-2xl p-7"><div class="text-center mb-5"><div class="text-6xl">🔑</div><h1 class="text-2xl font-bold mt-2">ลืมรหัสผ่านเจ้าของร้าน</h1><p class="text-slate-500 text-sm">เริ่มแก้รหัสผ่านจากใน Rattana POS</p></div>${message?`<div class="${msgClass} border rounded-xl p-3 mb-3 text-sm">${esc(message)}</div>`:''}<label class="block font-semibold mb-1">อีเมล Owner</label><input id="sbForgotEmail" type="email" value="${esc(saved)}" autocomplete="email" class="w-full border rounded-xl px-4 py-3" placeholder="owner@example.com"><button id="sbForgotSendBtn" onclick="sendSupabasePasswordResetLink()" class="w-full mt-4 rounded-xl py-3 bg-emerald-600 text-white font-bold">📧 ส่งลิงก์ตั้งรหัสใหม่</button><button onclick="supabaseLoginScreen()" class="w-full mt-2 rounded-xl py-3 bg-slate-100 font-bold">กลับหน้าเชื่อมเครื่อง</button><div class="mt-4 rounded-xl bg-sky-50 border border-sky-200 p-3 text-sm text-sky-900"><b>วิธีใช้:</b> กดส่งลิงก์ → เปิดอีเมลฉบับล่าสุด → กดลิงก์ → ระบบจะกลับมาที่ Rattana POS และขึ้นหน้า “ตั้งรหัสผ่านใหม่” อัตโนมัติ</div><div class="mt-2 text-xs text-slate-500 text-center">ไม่ต้องเข้า Supabase Dashboard เพื่อเปลี่ยนรหัสผ่าน</div></div></div>`;
+  setTimeout(()=>document.getElementById('sbForgotEmail')?.focus(),30)
+}
+async function sendSupabasePasswordResetLink(){
+  const email=(document.getElementById('sbForgotEmail')?.value||'').trim().toLowerCase(),btn=document.getElementById('sbForgotSendBtn');
+  if(!email)return toast('กรอกอีเมล Owner ก่อน',true);
+  if(!navigator.onLine)return toast('ต้องออนไลน์เพื่อส่งลิงก์รีเซ็ตรหัสผ่าน',true);
+  if(btn){btn.disabled=true;btn.textContent='กำลังส่ง…'}
+  try{
+    const db=initSupabaseClient();
+    saveRememberedSupabaseEmail(email,true);
+    localStorage.setItem(SUPABASE_RECOVERY_PENDING_KEY,String(Date.now()));
+    const {error}=await db.auth.resetPasswordForEmail(email,{redirectTo:supabaseRedirectUrl()});
+    if(error)throw error;
+    supabaseForgotPasswordScreen('ส่งอีเมลแล้ว ✅ เปิดอีเมลฉบับล่าสุดและกดลิงก์ตั้งรหัสใหม่ ระบบจะกลับมาที่ POS อัตโนมัติ','success')
+  }catch(e){
+    console.warn(e);
+    const raw=String(e?.message||'ส่งลิงก์ไม่สำเร็จ');
+    const msg=/rate limit|security purposes/i.test(raw)?'ส่งอีเมลถี่เกินไปชั่วคราว • รอสักครู่แล้วลองใหม่เพียงครั้งเดียว':raw;
+    supabaseForgotPasswordScreen(msg,'error')
+  }
 }
 function requestSupabasePasswordReset(message='',kind='error'){
   const app=document.getElementById('app'),saved=rememberedSupabaseEmail(),msgClass=kind==='success'?'bg-emerald-50 border-emerald-200 text-emerald-700':'bg-red-50 border-red-200 text-red-700';
@@ -786,10 +849,25 @@ async function requestSupabaseStoreAccess(){try{const db=initSupabaseClient(),{d
 async function retrySupabaseStoreAccess(){try{const db=initSupabaseClient(),{data,error}=await db.auth.getSession();if(error)throw error;const session=data?.session;if(!session?.user)return supabaseLoginScreen('Session หมดอายุ กรุณาเข้าสู่ระบบใหม่');const access=await getSupabaseAccess(session.user);if(access?.status==='approved')return completeSupabaseSession(session,true);supabaseAccessPendingScreen(session.user,access,'ยังไม่พบสิทธิ์ที่อนุมัติ')}catch(e){console.warn(e);toast(String(e?.message||'ตรวจสิทธิ์ไม่สำเร็จ'),true)}}
 async function doSupabaseLogin(){
   const email=(document.getElementById('sbEmail')?.value||'').trim().toLowerCase(),password=document.getElementById('sbPassword')?.value||'',remember=!!document.getElementById('sbRememberEmail')?.checked,btn=document.getElementById('sbLoginBtn');if(!email||!password)return toast('กรอกอีเมลและรหัสผ่านเจ้าของร้าน',true);if(!navigator.onLine)return toast('การเชื่อมเครื่องครั้งแรกต้องออนไลน์',true);if(btn){btn.disabled=true;btn.textContent='กำลังเชื่อมเครื่อง…'}
-  try{saveRememberedSupabaseEmail(email,remember);const db=initSupabaseClient(),{data,error}=await db.auth.signInWithPassword({email,password});if(error)throw error;if(!data?.session)throw new Error('เข้าสู่ระบบสำเร็จแต่ไม่พบ Session');await completeSupabaseSession(data.session,true)}catch(e){console.warn(e);const raw=String(e?.message||'เชื่อมเครื่องไม่สำเร็จ'),msg=/Invalid login credentials/i.test(raw)?'อีเมลหรือรหัสผ่านบัญชีเจ้าของร้านไม่ถูกต้อง':/Email not confirmed/i.test(raw)?'บัญชีเจ้าของร้านยังไม่ยืนยันอีเมลใน Supabase':raw;supabaseLoginScreen(msg)}
+  try{saveRememberedSupabaseEmail(email,remember);const db=initSupabaseClient(),{data,error}=await db.auth.signInWithPassword({email,password});if(error)throw error;if(!data?.session)throw new Error('เข้าสู่ระบบสำเร็จแต่ไม่พบ Session');await completeSupabaseSession(data.session,true)}catch(e){console.warn(e);const raw=String(e?.message||'เชื่อมเครื่องไม่สำเร็จ');if(/failed to fetch|networkerror|load failed|network request failed/i.test(raw)&&canUseOfflinePinAccess())return enterOfflinePinMode(raw);const msg=/Invalid login credentials/i.test(raw)?'อีเมลหรือรหัสผ่านบัญชีเจ้าของร้านไม่ถูกต้อง • ถ้าลืมรหัส ให้กด “ลืมรหัสผ่านเจ้าของร้าน?” ด้านล่าง':/Email not confirmed/i.test(raw)?'บัญชีเจ้าของร้านยังไม่ยืนยันอีเมลใน Supabase':/failed to fetch|networkerror|load failed|network request failed/i.test(raw)?'ติดต่อ Supabase ไม่ได้ • ตรวจอินเทอร์เน็ต แล้วลองใหม่ หรือใช้ PIN ออฟไลน์ถ้าเครื่องนี้เคยเชื่อมร้านแล้ว':raw;supabaseLoginScreen(msg)}
 }
 
 function simplePinUsers(){return (state.users||[]).filter(u=>u&&u.active!==false&&/^[0-9]{4,6}$/.test(String(u.pin||'')))}
+function canUseOfflinePinAccess(){
+  return localStorage.getItem(SIMPLE_PIN_READY_KEY)==='1' && simplePinUsers().length>0
+}
+function offlinePinReason(message=''){
+  const raw=String(message||'').trim();
+  if(/failed to fetch|networkerror|load failed|network request failed/i.test(raw))return 'ติดต่อ Supabase ไม่ได้ชั่วคราว • เครื่องนี้ยังเข้า POS ด้วย PIN ออฟไลน์ได้';
+  if(!navigator.onLine)return 'อินเทอร์เน็ตออฟไลน์ • ใช้ข้อมูลในเครื่องและ PIN ได้';
+  return raw||'คลาวด์ยังไม่พร้อม • ใช้ PIN ในเครื่องได้'
+}
+function enterOfflinePinMode(message=''){
+  supabaseBootDone=true;supabaseSession=null;supabaseMembership=null;currentUser=null;saveSessionUser();
+  if(canUseOfflinePinAccess())return simplePinLoginScreen(offlinePinReason(message),'success');
+  return supabaseLoginScreen(offlinePinReason(message))
+}
+
 function machineOwnerOperator(){
   return (state.users||[]).find(u=>u&&u.active!==false&&u.role==='owner'&&u.id===String(supabaseSession?.user?.id||''))||
     (state.users||[]).find(u=>u&&u.active!==false&&u.role==='owner'&&u.id!=='u_owner')||
@@ -840,7 +918,7 @@ function simplePinLoginScreen(message='',kind='error'){
   const users=simplePinUsers().slice().sort((a,b)=>a.role==='owner'&&b.role!=='owner'?-1:b.role==='owner'&&a.role!=='owner'?1:String(a.name||'').localeCompare(String(b.name||''),'th'));
   if(!users.length)return simplePinSetupScreen(message);
   const msgClass=kind==='success'?'bg-emerald-50 border-emerald-200 text-emerald-700':'bg-red-50 border-red-200 text-red-700';
-  app.innerHTML=`<div class="min-h-screen flex items-center justify-center p-4" style="background:${state.config.background_color}"><div class="w-full max-w-md bg-white rounded-3xl shadow-2xl p-7"><div class="text-center mb-5"><div class="text-6xl">🛒</div><h1 class="text-2xl font-bold mt-2">${esc(state.config.store_name)}</h1><p class="text-slate-500">เลือกชื่อ • ใส่ PIN • เข้างาน</p><p class="text-xs text-emerald-700 mt-1">🟢 เครื่องเชื่อมร้านแล้ว • v6.18.60</p></div>${message?`<div class="${msgClass} border rounded-xl p-3 mb-3 text-sm">${esc(message)}</div>`:''}<label class="block font-semibold mb-1">ผู้ใช้งาน</label><select id="loginUser" onchange="updateOwnerForgotPinVisibility()" class="w-full border rounded-xl px-4 py-3 mb-3 text-lg">${users.map(u=>`<option value="${esc(u.id)}">${esc(u.name)} — ${roleName(u.role)}</option>`).join('')}</select><label class="block font-semibold mb-1">PIN</label><input id="loginPin" inputmode="numeric" type="password" maxlength="6" autocomplete="off" class="w-full border rounded-xl px-4 py-3 text-center text-3xl tracking-widest" onkeydown="if(event.key==='Enter')doLogin()"><button onclick="doLogin()" class="w-full mt-4 rounded-xl py-3 text-white font-bold text-lg" style="background:${state.config.primary_action_color}">เข้าใช้งาน</button><div id="ownerForgotPinBox" class="hidden mt-3"><button onclick="openOwnerForgotPin()" class="w-full rounded-xl py-3 bg-amber-50 border border-amber-300 text-amber-900 font-bold">🔑 ลืม PIN เจ้าของร้าน?</button><div class="text-xs text-slate-500 text-center mt-1">ใช้ได้เฉพาะบัญชี Owner • ยืนยันด้วยอีเมลที่เชื่อมเครื่อง</div></div><div class="mt-4 rounded-xl bg-slate-50 border p-3 text-xs text-slate-600">พนักงานลืม PIN ให้เจ้าของร้านเข้า <b>ตั้งค่า → ผู้ใช้งานและ PIN</b> แล้วตั้งใหม่ให้</div></div></div>`;
+  app.innerHTML=`<div class="min-h-screen flex items-center justify-center p-4" style="background:${state.config.background_color}"><div class="w-full max-w-md bg-white rounded-3xl shadow-2xl p-7"><div class="text-center mb-5"><div class="text-6xl">🛒</div><h1 class="text-2xl font-bold mt-2">${esc(state.config.store_name)}</h1><p class="text-slate-500">เลือกชื่อ • ใส่ PIN • เข้างาน</p><p class="text-xs text-emerald-700 mt-1">🟢 เครื่องเชื่อมร้านแล้ว • v6.18.64</p></div>${message?`<div class="${msgClass} border rounded-xl p-3 mb-3 text-sm">${esc(message)}</div>`:''}<label class="block font-semibold mb-1">ผู้ใช้งาน</label><select id="loginUser" onchange="updateOwnerForgotPinVisibility()" class="w-full border rounded-xl px-4 py-3 mb-3 text-lg">${users.map(u=>`<option value="${esc(u.id)}">${esc(u.name)}${normalizePosUserEmail(u.email)?` • ${esc(normalizePosUserEmail(u.email))}`:''} — ${roleName(u.role)}</option>`).join('')}</select><label class="block font-semibold mb-1">PIN</label><input id="loginPin" inputmode="numeric" type="password" maxlength="6" autocomplete="off" class="w-full border rounded-xl px-4 py-3 text-center text-3xl tracking-widest" onkeydown="if(event.key==='Enter')doLogin()"><button onclick="doLogin()" class="w-full mt-4 rounded-xl py-3 text-white font-bold text-lg" style="background:${state.config.primary_action_color}">เข้าใช้งาน</button><div id="ownerForgotPinBox" class="hidden mt-3 space-y-2"><button onclick="openOwnerForgotPin()" class="w-full rounded-xl py-3 bg-amber-50 border border-amber-300 text-amber-900 font-bold">🔑 ลืม PIN เจ้าของร้าน?</button><button onclick="supabaseForgotPasswordScreen()" class="w-full rounded-xl py-3 bg-sky-50 border border-sky-300 text-sky-900 font-bold">📧 ลืมรหัสผ่านบัญชี Owner?</button><div class="text-xs text-slate-500 text-center">ปุ่มนี้แสดงเฉพาะ Owner • รีเซ็ตผ่าน Rattana POS ได้</div></div><div class="mt-4 rounded-xl bg-slate-50 border p-3 text-xs text-slate-600">พนักงานลืม PIN ให้เจ้าของร้านเข้า <b>ตั้งค่า → ผู้ใช้งานและ PIN</b> แล้วตั้งใหม่ให้</div></div></div>`;
   setTimeout(()=>{updateOwnerForgotPinVisibility();document.getElementById('loginPin')?.focus()},30)
 }
 function openOwnerForgotPin(){
@@ -874,7 +952,7 @@ async function resetOwnerPinByLinkedEmail(btn){
 function doSimplePinLogin(){
   const id=document.getElementById('loginUser')?.value||'',pin=document.getElementById('loginPin')?.value||'',u=(state.users||[]).find(x=>x.id===id&&x.active!==false);
   if(!u||String(u.pin||'')!==pin)return simplePinLoginScreen('PIN ไม่ถูกต้อง');
-  currentUser={id:u.id,name:u.name,role:u.role};audit('login',`เข้าสู่ระบบด้วย PIN • ${deviceDisplayName()}`,'session',getDeviceId());saveState();saveSessionUser();lastActivityAt=Date.now();scheduleAutoLock();activeTab='dashboard';menuOpen=false;applyDeviceProfile();render();toast(`ยินดีต้อนรับ ${u.name}`)
+  currentUser={id:u.id,name:u.name,role:u.role};audit('login',`เข้าสู่ระบบด้วย PIN${supabaseSession?.user?'':' (Offline/Local)'} • ${deviceDisplayName()}`,'session',getDeviceId());saveState();saveSessionUser();lastActivityAt=Date.now();scheduleAutoLock();activeTab='dashboard';menuOpen=false;applyDeviceProfile();render();toast(supabaseSession?.user?`ยินดีต้อนรับ ${u.name}`:`📴 เข้าใช้งานจากข้อมูลในเครื่อง • ${u.name} • คลาวด์จะซิงก์เมื่อเชื่อม Owner ใหม่`)
 }
 function pinLogout(){
   if(currentUser){audit('logout',`ออกจากระบบ PIN • ${deviceDisplayName()}`,'session',getDeviceId());saveState()}
@@ -882,8 +960,10 @@ function pinLogout(){
 }
 function openMachineLinkSettings(){
   if(currentUser?.role!=='owner')return toast('เฉพาะเจ้าของร้านเท่านั้น',true);
-  modal(`<div class="bg-white rounded-2xl p-6 max-w-md mx-auto"><h3 class="text-2xl font-bold">🔗 การเชื่อมเครื่องกับร้าน</h3><div class="mt-3 rounded-xl bg-emerald-50 border border-emerald-200 p-3 text-sm"><b>สถานะ:</b> เชื่อมแล้ว ✅<br><b>บัญชีคลาวด์:</b> ${esc(supabaseSession?.user?.email||'-')}<br><b>การเข้าหน้าร้าน:</b> ชื่อผู้ใช้ + PIN</div><p class="text-xs text-slate-500 mt-3">ปกติไม่ต้องเปลี่ยนการเชื่อมนี้ หากยกเลิก เครื่องจะกลับไปขออีเมล/รหัสผ่านเจ้าของร้านอีกครั้ง</p><div class="grid grid-cols-2 gap-2 mt-4"><button onclick="closeModal(this)" class="bg-slate-200 rounded-xl p-3 font-bold">ปิด</button><button onclick="unlinkSupabaseMachine(this)" class="bg-red-100 text-red-700 rounded-xl p-3 font-bold">ยกเลิกการเชื่อมเครื่อง</button></div></div>`)
+  const connected=!!supabaseSession?.user;
+  modal(`<div class="bg-white rounded-2xl p-6 max-w-md mx-auto"><h3 class="text-2xl font-bold">🔗 การเชื่อมเครื่องกับร้าน</h3><div class="mt-2 rounded-xl bg-amber-50 border border-amber-200 p-3 text-xs text-amber-900"><b>เมนูสำหรับ Owner เท่านั้น:</b> เก็บไว้ในหน้าตั้งค่าเพื่อป้องกันการกดเปลี่ยน/ยกเลิกการเชื่อมโดยไม่ตั้งใจ</div><div class="mt-3 rounded-xl ${connected?'bg-emerald-50 border-emerald-200':'bg-amber-50 border-amber-200'} border p-3 text-sm"><b>สถานะ:</b> ${connected?'เชื่อม Supabase แล้ว ✅':'ใช้งาน PIN จากข้อมูลในเครื่อง 🟡'}<br><b>บัญชีคลาวด์:</b> ${esc(supabaseSession?.user?.email||'ยังไม่ได้เชื่อม')}<br><b>การเข้าหน้าร้าน:</b> ชื่อผู้ใช้ + PIN</div>${connected?`<p class="text-xs text-slate-500 mt-3">ปกติไม่ต้องเปลี่ยนการเชื่อมนี้ หากยกเลิก เครื่องจะกลับไปขออีเมล/รหัสผ่านเจ้าของร้านอีกครั้ง</p><div class="grid grid-cols-2 gap-2 mt-4"><button onclick="closeModal(this)" class="bg-slate-200 rounded-xl p-3 font-bold">ปิด</button><button onclick="unlinkSupabaseMachine(this)" class="bg-red-100 text-red-700 rounded-xl p-3 font-bold">ยกเลิกการเชื่อมเครื่อง</button></div>`:`<p class="text-xs text-slate-500 mt-3">POS ยังขายจากข้อมูลในเครื่องได้ แต่จะยังไม่ซิงก์ข้ามเครื่องจนกว่า Owner จะเชื่อม Supabase ใหม่</p><div class="grid grid-cols-2 gap-2 mt-4"><button onclick="closeModal(this)" class="bg-slate-200 rounded-xl p-3 font-bold">ปิด</button><button onclick="closeModal(this);supabaseLoginScreen('กรอกบัญชี Owner เพื่อเชื่อม Supabase ใหม่','success')" class="bg-emerald-600 text-white rounded-xl p-3 font-bold">☁️ เชื่อมใหม่</button></div>`}</div>`)
 }
+
 async function unlinkSupabaseMachine(btn){
   if(!confirm('ยกเลิกการเชื่อมเครื่องนี้กับร้าน? พนักงานจะเข้าไม่ได้จนกว่า Owner จะเชื่อมเครื่องใหม่'))return;
   try{if(btn)btn.disabled=true;if(supabaseClient)await supabaseClient.auth.signOut({scope:'local'})}catch(e){console.warn(e)}
@@ -940,7 +1020,19 @@ async function supabaseSyncNow(silent=false,forcePull=false){
 }
 function startSupabaseSyncLoop(){if(supabaseSyncInterval)clearInterval(supabaseSyncInterval);supabaseSyncInterval=setInterval(()=>{if(supabaseSession?.user&&supabaseMembership?.active&&navigator.onLine&&!document.hidden)supabaseSyncNow(true,false)},10000)}
 async function bootstrapSupabase(){
-  if(!SUPABASE_ENABLED){supabaseBootDone=true;render();return}renderSupabaseBootScreen();try{const db=initSupabaseClient();const {data,error}=await db.auth.getSession();if(error)throw error;if(data?.session){await completeSupabaseSession(data.session,false)}else{supabaseBootDone=true;currentUser=null;supabaseLoginScreen()}}catch(e){console.warn(e);supabaseBootDone=true;currentUser=null;supabaseLoginScreen(String(e?.message||'เชื่อม Supabase ไม่สำเร็จ'))}
+  if(!SUPABASE_ENABLED){supabaseBootDone=true;render();return}
+  renderSupabaseBootScreen();
+  if(!navigator.onLine&&canUseOfflinePinAccess())return enterOfflinePinMode('อินเทอร์เน็ตออฟไลน์');
+  try{
+    const db=initSupabaseClient(),{data,error}=await db.auth.getSession();if(error)throw error;
+    if(data?.session){await completeSupabaseSession(data.session,false)}
+    else if(canUseOfflinePinAccess())enterOfflinePinMode('Session คลาวด์หมดอายุ • เข้า PIN ได้ และ Owner เชื่อม Supabase ใหม่ภายหลัง')
+    else{supabaseBootDone=true;currentUser=null;supabaseLoginScreen()}
+  }catch(e){
+    console.warn(e);
+    if(canUseOfflinePinAccess())return enterOfflinePinMode(String(e?.message||'เชื่อม Supabase ไม่สำเร็จ'));
+    supabaseBootDone=true;currentUser=null;supabaseLoginScreen(offlinePinReason(e?.message||'เชื่อม Supabase ไม่สำเร็จ'))
+  }
 }
 function startBackgroundSyncLoop(){if(autoSyncInterval){clearInterval(autoSyncInterval);autoSyncInterval=null}if(LOCAL_ONLY_MODE)return;const cfg=getSyncCfg();if(!cfg.auto)return;autoSyncInterval=setInterval(()=>{const c=getSyncCfg();if(c.auto&&c.url&&c.token&&navigator.onLine&&!document.hidden)syncNow(true,false);if('serviceWorker' in navigator&&navigator.onLine){navigator.serviceWorker.getRegistration().then(r=>r&&r.update()).catch(()=>{})}flushDeferredCloudRender()},AUTO_SYNC_INTERVAL_MS)}
 function applyCloudState(incoming,mergeLocal=true){const next=mergeLocal?mergeStatesInBrowser(incoming,state):normalizeLoadedState(incoming);state=next;persistState(false);currentUser=loadSessionUser()}
@@ -971,7 +1063,7 @@ function installPWA(){
   else toast('ถ้าไม่เห็นปุ่มติดตั้ง ให้ใช้เมนูเบราว์เซอร์ “เพิ่มไปยังหน้าจอหลัก / Install app”');
 }
 window.addEventListener('beforeinstallprompt',e=>{e.preventDefault();deferredInstallPrompt=e});
-window.addEventListener('online',()=>{toast('🟢 ออนไลน์แล้ว • กำลังเชื่อมข้อมูลกลาง');updateSyncStatusBadge();if(supabaseSession?.user&&supabaseMembership?.active)setTimeout(()=>supabaseSyncNow(true,false),250);if(!cloudRenderIsBusy())render()});
+window.addEventListener('online',()=>{toast(supabaseSession?.user?'🟢 ออนไลน์แล้ว • กำลังซิงก์ข้อมูลกลาง':'🟢 ออนไลน์แล้ว • POS ยังใช้ PIN ได้ • Owner เชื่อม Supabase ใหม่เพื่อซิงก์');updateSyncStatusBadge();if(supabaseSession?.user&&supabaseMembership?.active)setTimeout(()=>supabaseSyncNow(true,false),250);if(!cloudRenderIsBusy())render()});
 window.addEventListener('offline',()=>{updateSyncStatusBadge();if(currentUser)toast('🔴 ออฟไลน์ • ข้อมูลจะเก็บในเครื่องและซิงก์เมื่อออนไลน์',true)});
 window.addEventListener('offline',()=>{toast('📴 ออฟไลน์ — ขายต่อได้ ข้อมูลจะรอส่งเข้า Supabase');if(!cloudRenderIsBusy())render()});
 document.addEventListener('visibilitychange',()=>{if(!document.hidden){flushDeferredCloudRender();scheduleLocalPermanentSave();if(supabaseSession?.user&&supabaseMembership?.active&&navigator.onLine)supabaseSyncNow(true,false)}});
@@ -1094,7 +1186,7 @@ function audit(action,details='',entityType='',entityId=''){
   state.auditLogs.unshift({id:uid('audit'),time:new Date().toISOString(),user:currentUser?.name||'ระบบ',userId:currentUser?.id||'',deviceId:getDeviceId(),deviceName:deviceDisplayName(),action,details:String(details||''),entityType:entityType||'',entityId:entityId||''});
   if(state.auditLogs.length>3000)state.auditLogs.length=3000;
 }
-function actionName(a){return ({login:'เข้าสู่ระบบ',logout:'ออกจากระบบ',sale:'ขาย / รับชำระ',discount:'ให้ส่วนลด',discount_sale:'บิลมีส่วนลด',void_sale:'ยกเลิกบิล',return_sale:'คืนสินค้า',stock_adjust:'ปรับสต็อก',stock_count:'เช็กสต็อกจริง',product_create:'เพิ่มสินค้า',product_edit:'แก้ไขสินค้า',product_delete:'ลบสินค้า',product_promo:'สินค้าโปรโมชั่น',shift_close:'ปิดกะ',supplier_create:'เพิ่มผู้ขาย',supplier_edit:'แก้ไขผู้ขาย',supplier_ledger:'เจ้าหนี้/ชำระหนี้',data_delete:'ลบข้อมูล',data_restore:'เรียกกลับข้อมูล',data_reset:'รีเซ็ตข้อมูล',member_points_earn:'รับแต้มสมาชิก',member_points_redeem:'ใช้แต้มสมาชิก',member_points_adjust:'ปรับแต้มสมาชิก',bank_transfer_create:'บันทึกโอนเงิน',bank_transfer_cancel:'ยกเลิกรายการโอนเงิน',bank_transfer_settings:'ตั้งค่าบริการโอนเงิน',tax_settings:'ตั้งค่าภาษีสินค้า',tax_bulk_assign:'กำหนดภาษีหลายสินค้า',day_close:'ปิดวัน/ล็อกยอด',day_unlock:'เปิดล็อกวัน',user_permissions:'ปรับสิทธิ์พนักงาน',user_create:'เพิ่มผู้ใช้งาน',user_edit:'แก้ไขผู้ใช้งาน',manager_approval:'อนุมัติด้วย PIN',approval_settings:'ตั้งกฎอนุมัติ',purchase_order_create:'สร้าง PO',purchase_order_receive:'รับสินค้า PO',purchase_order_cancel:'ยกเลิก PO',expense_create:'บันทึกค่าใช้จ่าย',receivable_create:'สร้างลูกหนี้',receivable_payment:'รับชำระลูกหนี้',cash_drawer_open:'เปิดลิ้นชักเงินสด',auto_lock:'ล็อกหน้าจออัตโนมัติ',health_check:'ตรวจสุขภาพระบบ',sync_error:'ซิงก์ข้อมูลผิดพลาด',system_settings:'ตั้งค่าระบบ'}[a]||a)}
+function actionName(a){return ({login:'เข้าสู่ระบบ',logout:'ออกจากระบบ',sale:'ขาย / รับชำระ',discount:'ให้ส่วนลด',discount_sale:'บิลมีส่วนลด',void_sale:'ยกเลิกบิล',return_sale:'คืนสินค้า',stock_adjust:'ปรับสต็อก',stock_count:'เช็กสต็อกจริง',product_create:'เพิ่มสินค้า',product_edit:'แก้ไขสินค้า',product_delete:'ลบสินค้า',product_promo:'สินค้าโปรโมชั่น',shift_close:'ปิดกะ',supplier_create:'เพิ่มผู้ขาย',supplier_edit:'แก้ไขผู้ขาย',supplier_ledger:'เจ้าหนี้/ชำระหนี้',data_delete:'ลบข้อมูล',data_restore:'เรียกกลับข้อมูล',data_reset:'รีเซ็ตข้อมูล',member_points_earn:'รับแต้มสมาชิก',member_points_redeem:'ใช้แต้มสมาชิก',member_points_adjust:'ปรับแต้มสมาชิก',bank_transfer_create:'บันทึกโอนเงิน',bank_transfer_cancel:'ยกเลิกรายการโอนเงิน',bank_transfer_settings:'ตั้งค่าบริการโอนเงิน',tax_settings:'ตั้งค่าภาษีสินค้า',tax_bulk_assign:'กำหนดภาษีหลายสินค้า',day_close:'ปิดวัน/ล็อกยอด',day_unlock:'เปิดล็อกวัน',user_permissions:'ปรับสิทธิ์พนักงาน',user_create:'เพิ่มผู้ใช้งาน',user_edit:'แก้ไขผู้ใช้งาน',manager_approval:'อนุมัติด้วย PIN',approval_settings:'ตั้งกฎอนุมัติ',purchase_order_create:'สร้าง PO',purchase_order_receive:'รับสินค้า PO',purchase_order_cancel:'ยกเลิก PO',expense_create:'บันทึกค่าใช้จ่าย',receivable_create:'สร้างลูกหนี้',receivable_payment:'รับชำระลูกหนี้',cash_drawer_open:'เปิดลิ้นชักเงินสด',auto_lock:'ล็อกหน้าจออัตโนมัติ',health_check:'ตรวจสุขภาพระบบ',sync_error:'ซิงก์ข้อมูลผิดพลาด',system_settings:'ตั้งค่าระบบ',user_delete:'ลบผู้ใช้งาน'}[a]||a)}
 // v6.13 Login / device activity history
 function loginHistoryDefaults(){const today=new Date(),from=new Date(today);from.setDate(today.getDate()-6);return{from:from.toISOString().slice(0,10),to:today.toISOString().slice(0,10),user:'',device:'',type:'all',q:''}}
 function loginHistoryFilterValues(){const d=loginHistoryDefaults();return{from:document.getElementById('loginHistFrom')?.value||d.from,to:document.getElementById('loginHistTo')?.value||d.to,user:document.getElementById('loginHistUser')?.value||'',device:document.getElementById('loginHistDevice')?.value||'',type:document.getElementById('loginHistType')?.value||'all',q:(document.getElementById('loginHistQ')?.value||'').trim().toLowerCase()}}
@@ -1156,16 +1248,131 @@ function loginScreen(){if(SUPABASE_ENABLED)return supabaseSession?.user&&supabas
   document.getElementById('app').innerHTML=`<div class="min-h-screen flex items-center justify-center p-4" style="background:${state.config.background_color}"><div class="w-full max-w-md bg-white rounded-3xl shadow-2xl p-7"><div class="text-center mb-6"><div class="text-6xl">🛒</div><h1 class="text-2xl font-bold mt-2">${esc(state.config.store_name)}</h1><p class="text-slate-500">เข้าสู่ระบบ POS</p></div><label class="block font-semibold mb-1">ผู้ใช้งาน</label><select id="loginUser" class="w-full border rounded-xl px-4 py-3 mb-3">${users.map(u=>`<option value="${esc(u.id)}">${esc(u.name)} — ${roleName(u.role)}</option>`).join('')}</select><label class="block font-semibold mb-1">PIN</label><input id="loginPin" inputmode="numeric" type="password" maxlength="6" class="w-full border rounded-xl px-4 py-3 text-center text-2xl" onkeydown="if(event.key==='Enter')doLogin()"><button onclick="doLogin()" class="w-full mt-4 rounded-xl py-3 text-white font-bold" style="background:${state.config.primary_action_color}">เข้าสู่ระบบ</button></div></div>`}
 function doLogin(){if(SUPABASE_ENABLED)return doSimplePinLogin();const id=document.getElementById('loginUser').value,pin=document.getElementById('loginPin').value,u=state.users.find(x=>x.id===id&&x.active);if(u&&u.pin===pin){currentUser={id:u.id,name:u.name,role:u.role};audit('login',`เข้าสู่ระบบ • ${deviceDisplayName()}`,'session',getDeviceId());saveState();saveSessionUser();activeTab='dashboard';menuOpen=false;applyDeviceProfile();render();toast(`ยินดีต้อนรับ ${u.name}`)}else toast('PIN ไม่ถูกต้อง',true)}
 async function logout(){if(SUPABASE_ENABLED)return pinLogout();if(currentUser){audit('logout',`ออกจากระบบ • ${deviceDisplayName()}`,'session',getDeviceId());saveState()}currentUser=null;saveSessionUser();cart=[];saleView='products';activeTab='dashboard';loginScreen()}
-function openUsers(){if(!requirePermission('manageUsers','ไม่มีสิทธิ์จัดการผู้ใช้ / PIN'))return;const m=modal(`<div class="bg-white rounded-2xl p-6 max-w-3xl mx-auto">
-  <div class="flex justify-between items-center mb-4"><h3 class="text-2xl font-bold">👥 ผู้ใช้งานและ PIN</h3><button onclick="closeModal(this)" class="text-3xl">×</button></div>
-  <div class="overflow-auto"><table class="w-full text-sm"><thead><tr class="bg-slate-100"><th class="p-2 text-left">ชื่อ</th><th>สิทธิ์</th><th>สถานะ</th><th></th></tr></thead><tbody>${state.users.map(u=>`<tr class="border-b"><td class="p-2">${esc(u.name)}</td><td class="text-center">${roleName(u.role)}</td><td class="text-center">${u.active?'✅':'⛔'}</td><td class="text-right p-2"><button onclick="editUser('${u.id}')" class="px-3 py-1 rounded bg-slate-200">แก้ไข</button></td></tr>`).join('')}</tbody></table></div>
-  <button onclick="addUser()" class="mt-4 px-4 py-2 rounded-lg text-white" style="background:${state.config.primary_action_color}">+ เพิ่มผู้ใช้</button></div>`);}
-function addUser(){const m=modal(`<div class="bg-white rounded-2xl p-6 max-w-md mx-auto"><h3 class="text-xl font-bold mb-4">เพิ่มผู้ใช้</h3>
-  <input id="uName" placeholder="ชื่อ" class="w-full border rounded-lg p-2 mb-2"><select id="uRole" class="w-full border rounded-lg p-2 mb-2"><option value="cashier">แคชเชียร์</option><option value="manager">ผู้จัดการ</option><option value="owner">เจ้าของร้าน</option></select><input id="uPin" maxlength="6" placeholder="PIN 4-6 หลัก" class="w-full border rounded-lg p-2 mb-4" inputmode="numeric">
-  <div class="flex gap-2"><button onclick="closeModal(this)" class="flex-1 bg-slate-200 rounded-lg p-2">ยกเลิก</button><button onclick="saveNewUser(this)" class="flex-1 text-white rounded-lg p-2" style="background:${state.config.primary_action_color}">บันทึก</button></div></div>`)}
-function saveNewUser(btn){if(!requirePermission('manageUsers','ไม่มีสิทธิ์จัดการผู้ใช้'))return;const name=document.getElementById('uName').value.trim(),role=document.getElementById('uRole').value,pin=document.getElementById('uPin').value.trim();if(!name||!/^[0-9]{4,6}$/.test(pin))return toast('กรอกชื่อและ PIN 4-8 ตัวเลข',true);if(role==='owner'&&!requireRole(['owner']))return toast('เฉพาะเจ้าของร้านที่เพิ่มบัญชีเจ้าของได้',true);const newUser={id:uid('u'),name,role,pin,active:true,permissions:{}};state.users.push(newUser);audit('user_create',`${name} • ${roleName(role)}`,'user',newUser.id);saveState();closeModal(btn);document.querySelectorAll('.fixed.inset-0').forEach(x=>x.remove());openUsers()}
-function editUser(id){const u=state.users.find(x=>x.id===id);if(!u)return;modal(`<div class="bg-white rounded-2xl p-6 max-w-md mx-auto"><h3 class="text-xl font-bold mb-4">แก้ไข ${esc(u.name)}</h3><input id="euName" value="${esc(u.name)}" class="w-full border rounded-lg p-2 mb-2"><select id="euRole" class="w-full border rounded-lg p-2 mb-2"><option value="cashier" ${u.role==='cashier'?'selected':''}>แคชเชียร์</option><option value="manager" ${u.role==='manager'?'selected':''}>ผู้จัดการ</option><option value="owner" ${u.role==='owner'?'selected':''}>เจ้าของร้าน</option></select><input id="euPin" maxlength="6" placeholder="PIN ใหม่ (เว้นว่างถ้าไม่เปลี่ยน)" class="w-full border rounded-lg p-2 mb-2" inputmode="numeric"><label class="flex gap-2 mb-4"><input id="euActive" type="checkbox" ${u.active?'checked':''}> เปิดใช้งาน</label><div class="flex gap-2"><button onclick="closeModal(this)" class="flex-1 bg-slate-200 rounded p-2">ยกเลิก</button><button onclick="saveEditUser('${u.id}',this)" class="flex-1 text-white rounded p-2" style="background:${state.config.primary_action_color}">บันทึก</button></div></div>`)}
-function saveEditUser(id,btn){if(!requirePermission('manageUsers','ไม่มีสิทธิ์จัดการผู้ใช้'))return;const u=state.users.find(x=>x.id===id);if(!u)return;const pin=document.getElementById('euPin').value.trim();if(pin&&!/^[0-9]{4,6}$/.test(pin))return toast('PIN ต้องเป็นตัวเลข 4-6 หลัก',true);u.name=document.getElementById('euName').value.trim()||u.name;const nextRole=document.getElementById('euRole').value;if(nextRole==='owner'&&!requireRole(['owner']))return toast('เฉพาะเจ้าของร้านที่เปลี่ยนเป็นบัญชีเจ้าของได้',true);u.role=nextRole;u.active=document.getElementById('euActive').checked;if(pin)u.pin=pin;audit('user_edit',`${u.name} • ${roleName(u.role)} • ${u.active?'เปิดใช้งาน':'ปิดใช้งาน'}`,'user',u.id);saveState();closeModal(btn);toast('บันทึกผู้ใช้แล้ว')}
+function normalizePosUserEmail(v){return String(v||'').trim().toLowerCase()}
+function isValidPosUserEmail(v){const e=normalizePosUserEmail(v);return !e||/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(e)}
+function posUserEmailExists(email,exceptId=''){
+  const e=normalizePosUserEmail(email);if(!e)return false;
+  return (state.users||[]).some(u=>String(u.id)!==String(exceptId)&&normalizePosUserEmail(u.email)===e)
+}
+function canDeletePosUser(u){
+  if(!u||u.role==='owner')return false;
+  if(currentUser&&String(currentUser.id)===String(u.id))return false;
+  return true
+}
+function openUsers(){
+  if(!requirePermission('manageUsers','ไม่มีสิทธิ์จัดการผู้ใช้ / PIN'))return;
+  const rows=(state.users||[]).slice().sort((a,b)=>a.role==='owner'&&b.role!=='owner'?-1:b.role==='owner'&&a.role!=='owner'?1:String(a.name||'').localeCompare(String(b.name||''),'th'));
+  modal(`<div class="bg-white rounded-2xl p-6 max-w-5xl mx-auto max-h-[92vh] overflow-y-auto">
+    <div class="flex flex-wrap justify-between items-center gap-3 mb-4">
+      <div><h3 class="text-2xl font-bold">👥 ผู้ใช้งาน / PIN / อีเมล</h3><p class="text-sm text-slate-500">เพิ่ม แก้ไข ปิด หรือลบผู้ใช้งานจากผู้ดูแลระบบ</p></div>
+      <button onclick="closeModal(this)" class="text-3xl">×</button>
+    </div>
+    <div class="rounded-xl bg-sky-50 border border-sky-200 p-3 text-sm text-sky-900 mb-4">
+      <b>อีเมลผู้ใช้งาน</b> ใช้เป็นข้อมูลประจำตัวใน POS และซิงก์ข้ามเครื่อง พนักงานยังเข้าใช้งานด้วย <b>ชื่อ + PIN</b> ไม่ต้องสมัคร Supabase เอง
+    </div>
+    <div class="overflow-auto border rounded-xl">
+      <table class="w-full text-sm min-w-[760px]">
+        <thead><tr class="bg-slate-100"><th class="p-2 text-left">ชื่อ</th><th class="p-2 text-left">อีเมล</th><th>สิทธิ์</th><th>สถานะ</th><th class="p-2 text-right">จัดการ</th></tr></thead>
+        <tbody>${rows.map(u=>`<tr class="border-b">
+          <td class="p-2 font-semibold">${esc(u.name||'-')}</td>
+          <td class="p-2 text-slate-600">${esc(normalizePosUserEmail(u.email)||'-')}</td>
+          <td class="text-center">${roleName(u.role)}</td>
+          <td class="text-center">${u.active!==false?'✅ เปิด':'⛔ ปิด'}</td>
+          <td class="text-right p-2 whitespace-nowrap">
+            <button onclick="editUser('${u.id}')" class="px-3 py-1.5 rounded bg-slate-200">แก้ไข</button>
+            ${canDeletePosUser(u)&&currentUser?.role==='owner'?`<button onclick="deletePosUser('${u.id}',this)" class="ml-1 px-3 py-1.5 rounded bg-red-50 text-red-700 border border-red-200">ลบ</button>`:''}
+          </td>
+        </tr>`).join('')}</tbody>
+      </table>
+    </div>
+    <button onclick="addUser()" class="mt-4 px-4 py-3 rounded-xl text-white font-bold" style="background:${state.config.primary_action_color}">+ เพิ่มผู้ใช้งาน</button>
+  </div>`)
+}
+function addUser(){
+  if(!requirePermission('manageUsers','ไม่มีสิทธิ์จัดการผู้ใช้'))return;
+  modal(`<div class="bg-white rounded-2xl p-6 max-w-md mx-auto">
+    <h3 class="text-xl font-bold mb-4">➕ เพิ่มผู้ใช้งาน</h3>
+    <label class="block text-sm font-semibold mb-1">ชื่อผู้ใช้งาน</label>
+    <input id="uName" placeholder="เช่น เจ, นัท, แคชเชียร์ 1" class="w-full border rounded-lg p-3 mb-3">
+    <label class="block text-sm font-semibold mb-1">อีเมลผู้ใช้งาน <span class="text-slate-400">(ไม่บังคับ)</span></label>
+    <input id="uEmail" type="email" autocomplete="off" placeholder="staff@example.com" class="w-full border rounded-lg p-3 mb-3">
+    <label class="block text-sm font-semibold mb-1">สิทธิ์</label>
+    <select id="uRole" class="w-full border rounded-lg p-3 mb-3">
+      <option value="cashier">แคชเชียร์</option>
+      <option value="manager">ผู้จัดการ</option>
+    </select>
+    <label class="block text-sm font-semibold mb-1">PIN 4–6 หลัก</label>
+    <input id="uPin" maxlength="6" placeholder="เช่น 1234" class="w-full border rounded-lg p-3 mb-4 text-center text-2xl tracking-widest" inputmode="numeric" type="password">
+    <div class="rounded-lg bg-amber-50 border border-amber-200 p-3 text-xs text-amber-900 mb-4">
+      บัญชี <b>Owner</b> มาจากบัญชีเจ้าของร้านที่เชื่อม Supabase เท่านั้น เพื่อกันสร้าง Owner ปลอมจากหน้าพนักงาน
+    </div>
+    <div class="flex gap-2"><button onclick="closeModal(this)" class="flex-1 bg-slate-200 rounded-lg p-3">ยกเลิก</button><button onclick="saveNewUser(this)" class="flex-1 text-white rounded-lg p-3 font-bold" style="background:${state.config.primary_action_color}">บันทึก</button></div>
+  </div>`)
+}
+function saveNewUser(btn){
+  if(!requirePermission('manageUsers','ไม่มีสิทธิ์จัดการผู้ใช้'))return;
+  const name=document.getElementById('uName')?.value.trim()||'',email=normalizePosUserEmail(document.getElementById('uEmail')?.value),role=document.getElementById('uRole')?.value||'cashier',pin=document.getElementById('uPin')?.value.trim()||'';
+  if(!name)return toast('กรอกชื่อผู้ใช้งาน',true);
+  if(!isValidPosUserEmail(email))return toast('รูปแบบอีเมลไม่ถูกต้อง',true);
+  if(posUserEmailExists(email))return toast('อีเมลนี้ถูกใช้กับผู้ใช้งานคนอื่นแล้ว',true);
+  if(!/^[0-9]{4,6}$/.test(pin))return toast('PIN ต้องเป็นตัวเลข 4–6 หลัก',true);
+  const newUser={id:uid('u'),name,email,role,pin,active:true,permissions:{}};
+  state.users.push(newUser);
+  audit('user_create',`${name} • ${email||'ไม่มีอีเมล'} • ${roleName(role)}`,'user',newUser.id);
+  saveState();closeModal(btn);document.querySelectorAll('.fixed.inset-0').forEach(x=>x.remove());openUsers()
+}
+function editUser(id){
+  const u=state.users.find(x=>x.id===id);if(!u)return;
+  modal(`<div class="bg-white rounded-2xl p-6 max-w-md mx-auto">
+    <h3 class="text-xl font-bold mb-4">✏️ แก้ไข ${esc(u.name)}</h3>
+    <label class="block text-sm font-semibold mb-1">ชื่อผู้ใช้งาน</label>
+    <input id="euName" value="${esc(u.name||'')}" class="w-full border rounded-lg p-3 mb-3">
+    <label class="block text-sm font-semibold mb-1">อีเมลผู้ใช้งาน <span class="text-slate-400">(ไม่บังคับ)</span></label>
+    <input id="euEmail" type="email" autocomplete="off" value="${esc(normalizePosUserEmail(u.email))}" placeholder="staff@example.com" class="w-full border rounded-lg p-3 mb-3">
+    <label class="block text-sm font-semibold mb-1">สิทธิ์</label>
+    <select id="euRole" class="w-full border rounded-lg p-3 mb-3" ${u.role==='owner'?'disabled':''}>
+      <option value="cashier" ${u.role==='cashier'?'selected':''}>แคชเชียร์</option>
+      <option value="manager" ${u.role==='manager'?'selected':''}>ผู้จัดการ</option>
+      ${u.role==='owner'?'<option value="owner" selected>เจ้าของร้าน</option>':''}
+    </select>
+    <label class="block text-sm font-semibold mb-1">PIN ใหม่ <span class="text-slate-400">(เว้นว่างถ้าไม่เปลี่ยน)</span></label>
+    <input id="euPin" maxlength="6" placeholder="PIN ใหม่ 4–6 หลัก" class="w-full border rounded-lg p-3 mb-3 text-center text-2xl tracking-widest" inputmode="numeric" type="password">
+    <label class="flex gap-2 mb-4 items-center"><input id="euActive" type="checkbox" class="w-5 h-5" ${u.active!==false?'checked':''} ${u.role==='owner'?'disabled':''}> เปิดใช้งาน</label>
+    ${u.role==='owner'?'<div class="rounded-lg bg-amber-50 border border-amber-200 p-3 text-xs text-amber-900 mb-4">Owner หลักลบ ปิด หรือลดสิทธิ์จากหน้านี้ไม่ได้</div>':''}
+    <div class="flex gap-2"><button onclick="closeModal(this)" class="flex-1 bg-slate-200 rounded p-3">ยกเลิก</button><button onclick="saveEditUser('${u.id}',this)" class="flex-1 text-white rounded p-3 font-bold" style="background:${state.config.primary_action_color}">บันทึก</button></div>
+  </div>`)
+}
+function saveEditUser(id,btn){
+  if(!requirePermission('manageUsers','ไม่มีสิทธิ์จัดการผู้ใช้'))return;
+  const u=state.users.find(x=>x.id===id);if(!u)return;
+  const name=document.getElementById('euName')?.value.trim()||u.name,email=normalizePosUserEmail(document.getElementById('euEmail')?.value),pin=document.getElementById('euPin')?.value.trim()||'';
+  if(!name)return toast('กรอกชื่อผู้ใช้งาน',true);
+  if(!isValidPosUserEmail(email))return toast('รูปแบบอีเมลไม่ถูกต้อง',true);
+  if(posUserEmailExists(email,id))return toast('อีเมลนี้ถูกใช้กับผู้ใช้งานคนอื่นแล้ว',true);
+  if(pin&&!/^[0-9]{4,6}$/.test(pin))return toast('PIN ต้องเป็นตัวเลข 4–6 หลัก',true);
+  const before={name:u.name,email:normalizePosUserEmail(u.email),role:u.role,active:u.active!==false};
+  const nextRole=u.role==='owner'?'owner':(document.getElementById('euRole')?.value||u.role);
+  const nextActive=u.role==='owner'?true:(document.getElementById('euActive')?.checked!==false);
+  u.name=name;u.email=email;u.role=nextRole;u.active=nextActive;if(pin)u.pin=pin;
+  const changes=[];
+  if(before.name!==u.name)changes.push(`ชื่อ ${before.name} → ${u.name}`);
+  if(before.email!==u.email)changes.push(`อีเมล ${before.email||'-'} → ${u.email||'-'}`);
+  if(before.role!==u.role)changes.push(`สิทธิ์ ${roleName(before.role)} → ${roleName(u.role)}`);
+  if(before.active!==u.active)changes.push(u.active?'เปิดใช้งาน':'ปิดใช้งาน');
+  if(pin)changes.push('เปลี่ยน PIN');
+  audit('user_edit',`${u.name} • ${changes.join(' • ')||'บันทึกข้อมูลผู้ใช้'}`,'user',u.id);
+  saveState();closeModal(btn);toast('บันทึกผู้ใช้แล้ว')
+}
+function deletePosUser(id,btn){
+  if(!requireRole(['owner']))return toast('เฉพาะเจ้าของร้านที่ลบผู้ใช้งานได้',true);
+  const u=state.users.find(x=>x.id===id);if(!u)return;
+  if(u.role==='owner')return toast('ไม่สามารถลบบัญชี Owner หลักได้',true);
+  if(currentUser&&String(currentUser.id)===String(u.id))return toast('ไม่สามารถลบบัญชีที่กำลังใช้งานอยู่',true);
+  if(!confirm(`ลบผู้ใช้งาน "${u.name}" ออกจากระบบ?\n\nประวัติการขายและ Audit เดิมจะยังคงอยู่`))return;
+  state.users=state.users.filter(x=>String(x.id)!==String(id));
+  audit('user_delete',`${u.name} • ${normalizePosUserEmail(u.email)||'ไม่มีอีเมล'} • ${roleName(u.role)}`,'user',id);
+  saveState();closeModal(btn);document.querySelectorAll('.fixed.inset-0').forEach(x=>x.remove());openUsers();toast('ลบผู้ใช้งานแล้ว')
+}
 
 
 function permissionLabel(key){return (PERMISSION_DEFS.find(x=>x[0]===key)||[key,key])[1]}
@@ -2352,7 +2559,7 @@ function saveSettings(btn){
   Object.assign(state.config,{store_name:document.getElementById('cfgStore').value.trim(),branch_name:document.getElementById('cfgBranch').value.trim(),phone_number:document.getElementById('cfgPhone').value.trim(),promptpay_number:document.getElementById('cfgPP').value.trim(),low_stock_default:Math.max(0,n(document.getElementById('cfgLow').value,5)),background_color:safeColor(document.getElementById('cfgBgColor')?.value,state.config.background_color),surface_color:safeColor(document.getElementById('cfgSurfaceColor')?.value,state.config.surface_color),text_color:safeColor(document.getElementById('cfgTextColor')?.value,state.config.text_color),primary_action_color:safeColor(document.getElementById('cfgPrimaryColor')?.value,state.config.primary_action_color),secondary_action_color:safeColor(document.getElementById('cfgSecondaryColor')?.value,state.config.secondary_action_color)});
   if(settingsLogoImageDeleteRequested)stampStoreAsset('logo_image','',true);else if(settingsLogoImageDraft!==oldLogo)stampStoreAsset('logo_image',safeProductImage(settingsLogoImageDraft),false);
   if(settingsPromptPayImageDeleteRequested)stampStoreAsset('promptpay_image','',true);else if(settingsPromptPayImageDraft!==oldPP)stampStoreAsset('promptpay_image',safePromptPayImage(settingsPromptPayImageDraft),false);
-  state.settings.expiryWarnDays=Math.max(0,n(document.getElementById('cfgExpiryWarn')?.value,30));saveState();
+  state.settings.expiryWarnDays=Math.max(0,n(document.getElementById('cfgExpiryWarn')?.value,30));saveState();updateAppBrandingIcon(true);
   settingsPromptPayImageDraft='';settingsLogoImageDraft='';settingsPromptPayImageDeleteRequested=false;settingsLogoImageDeleteRequested=false;closeModal(btn);render();toast('บันทึกร้านและสีหน้าขายแล้ว • โลโก้และ QR จะเก็บถาวรบน Cloud');
   if(navigator.onLine&&getSyncCfg().url&&getSyncCfg().token)setTimeout(()=>syncNow(true,false),80)
 }
@@ -2582,12 +2789,12 @@ window.addEventListener('keydown',e=>{if((e.ctrlKey||e.metaKey)&&String(e.key).t
 function openPrimaryTab(tab){menuOpen=false;lastRenderedTab='';if(['products','promoProducts','sales','statistics','labels'].includes(tab))return openStoreModule(tab);activeTab=tab;render()}
 function nav(){
   const navCfg={...DEFAULT_TOP_NAV_SETTINGS,...(state.settings.topNav||{})},alertCount=frontAlertCount();
-  const menuPanel=`<div class="${menuOpen?'block':'hidden'} absolute right-0 top-full mt-1 bg-white shadow-xl border rounded-xl w-60 p-2 z-50">${ownerReportOnlyMode()?`<button onclick="menuOpen=false;disableOwnerReportOnly()" class="w-full text-left p-3 bg-indigo-50 text-indigo-800 rounded font-bold">👁️ ปิดโหมดดูอย่างเดียว</button>`:''}${canOpenStoreCenter()?`<button onclick="menuOpen=false;openSettings()" class="w-full text-left p-3 hover:bg-slate-100 rounded font-bold">⚙️ ตั้งค่า / ศูนย์จัดการร้าน</button>`:''}${hasPermission('viewReports')?`<button onclick="menuOpen=false;openDailyReport()" class="w-full text-left p-3 hover:bg-slate-100 rounded">📊 รายงานประจำวัน</button>`:''}<button onclick="menuOpen=false;openFrontAlerts()" class="w-full text-left p-3 hover:bg-slate-100 rounded">🔔 แจ้งเตือน (${alertCount})</button><div class="px-2 py-2 text-xs text-emerald-700 border-t mt-1">${supabaseStatusText()}<br><span class="text-slate-500">${localPermanentStatusText()}</span></div><div class="md:hidden px-2 py-2 text-xs text-slate-500">👤 ${esc(currentUser?.name||'')}</div>${currentUser?.role==='owner'?`<button onclick="menuOpen=false;openMachineLinkSettings()" class="w-full text-left p-2 hover:bg-slate-100 rounded">🔗 การเชื่อมเครื่อง</button>`:''}<button onclick="logout()" class="w-full text-left p-2 hover:bg-red-50 text-red-600 rounded">🚪 ออกจากงาน / เปลี่ยนผู้ใช้</button></div>`;
+  const menuPanel=`<div class="${menuOpen?'block':'hidden'} absolute right-0 top-full mt-1 bg-white shadow-xl border rounded-xl w-60 p-2 z-50">${ownerReportOnlyMode()?`<button onclick="menuOpen=false;disableOwnerReportOnly()" class="w-full text-left p-3 bg-indigo-50 text-indigo-800 rounded font-bold">👁️ ปิดโหมดดูอย่างเดียว</button>`:''}${canOpenStoreCenter()?`<button onclick="menuOpen=false;openSettings()" class="w-full text-left p-3 hover:bg-slate-100 rounded font-bold">⚙️ ตั้งค่า / ศูนย์จัดการร้าน</button>`:''}${hasPermission('viewReports')?`<button onclick="menuOpen=false;openDailyReport()" class="w-full text-left p-3 hover:bg-slate-100 rounded">📊 รายงานประจำวัน</button>`:''}<button onclick="menuOpen=false;openFrontAlerts()" class="w-full text-left p-3 hover:bg-slate-100 rounded">🔔 แจ้งเตือน (${alertCount})</button><div class="px-2 py-2 text-xs text-emerald-700 border-t mt-1">${supabaseStatusText()}<br><span class="text-slate-500">${localPermanentStatusText()}</span></div><div class="md:hidden px-2 py-2 text-xs text-slate-500">👤 ${esc(currentUser?.name||'')}</div><button onclick="logout()" class="w-full text-left p-2 hover:bg-red-50 text-red-600 rounded">🚪 ออกจากงาน / เปลี่ยนผู้ใช้</button></div>`;
   if(!navCfg.enabled)return `<div class="fixed top-2 right-2 z-40"><div class="relative"><button onclick="menuOpen=!menuOpen;render()" class="px-3 py-2 rounded-xl bg-white border shadow-lg font-bold" title="เมนูระบบ">☰</button>${menuPanel}</div></div>`;
   const tabs=[['dashboard','🏠','หน้าแรก'],['pos','🛒','ขายสินค้า'],['products','📦','สินค้า/สต็อก'],['promoProducts','🔥','สินค้าโปรโมชั่น'],['sales','🧾','บิลย้อนหลัง'],['statistics','📈','สถิติ/กำไร'],['labels','🏷️','ป้ายราคา']].filter(t=>tabAllowed(t[0])&&navCfg[t[0]]!==false);
   return `<div class="sticky top-0 z-30 bg-white border-b shadow-sm"><div class="max-w-7xl mx-auto px-3 py-2 flex gap-2 items-center"><div class="flex-1 flex gap-1 overflow-x-auto scrollbar-thin">${tabs.map(t=>`<button onclick="openPrimaryTab('${t[0]}')" class="px-3 py-2 rounded-lg whitespace-nowrap font-semibold ${activeTab===t[0]?'text-white':''}" style="background:${activeTab===t[0]?state.config.primary_action_color:'transparent'}">${t[1]} ${t[2]}</button>`).join('')}</div>${navCfg.search?`<button onclick="openGlobalSearch()" class="px-3 py-2 rounded-lg bg-indigo-50 text-indigo-700 font-bold" title="ค้นหาทุกอย่าง (Ctrl+K)">🔎<span class="hidden lg:inline"> ค้นหา</span></button>`:''}${navCfg.sync?syncStatusBadgeHtml():''}${navCfg.alerts?`<button onclick="openFrontAlerts()" class="hidden lg:flex items-center gap-1 px-3 py-2 rounded-lg text-xs font-bold whitespace-nowrap ${alertCount?'bg-amber-100 text-amber-800':'bg-emerald-50 text-emerald-700'}" title="แจ้งเตือนหน้าร้าน">${alertCount?`🔔 ${alertCount} รายการต้องตรวจสอบ`:'✅ ยังไม่มีรายการสำคัญที่ต้องแจ้งเตือน'}</button><button onclick="openFrontAlerts()" class="lg:hidden px-2 py-2 rounded-lg ${alertCount?'bg-amber-100 text-amber-800':'bg-emerald-50 text-emerald-700'}" title="${alertCount?`${alertCount} รายการต้องตรวจสอบ`:'ยังไม่มีรายการสำคัญที่ต้องแจ้งเตือน'}">${alertCount?`🔔${alertCount}`:'✅'}</button>`:''}${navCfg.user?`<div class="hidden md:block text-right px-2"><div class="text-xs text-slate-400">เข้าใช้งานโดย</div><div class="font-semibold text-sm">👤 ${esc(currentUser?.name||'')}</div></div>`:''}<div class="relative"><button onclick="menuOpen=!menuOpen;render()" class="px-3 py-2 rounded-lg bg-slate-100">☰</button>${menuPanel}</div></div></div>`
 }
-function render(){deferredCloudRender=false;if(SUPABASE_ENABLED&&!supabaseBootDone)return renderSupabaseBootScreen();if(settingsTabMode&&!document.querySelector('.app-settings-tab'))setSettingsTabMode(false);if(currentUser&&!tabAllowed(activeTab))activeTab='dashboard';const currentWorkspace=settingsWorkspaceCurrent();if(settingsTabMode&&document.getElementById('settingsWorkspace')&&currentWorkspace?.kind==='tab'&&currentWorkspace.tab){settingsWorkspaceTab=currentWorkspace.tab;activeTab=currentWorkspace.tab;currentWorkspace.html=settingsWorkspaceTabHtml(currentWorkspace.tab);settingsWorkspaceShowCurrent(false);updateCustomerDisplay();return}const tabChanged=lastRenderedTab!==activeTab;const device=applyDeviceProfile();if((SUPABASE_ENABLED||state.settings.requireLogin)&&!currentUser)return loginScreen();const app=document.getElementById('app');app.style.background=state.config.background_color;const body=activeTab==='dashboard'?renderDashboard():activeTab==='pos'?renderPOS():activeTab==='products'?renderProducts():activeTab==='promoProducts'?renderProductPromotions():activeTab==='sales'?renderSales():activeTab==='statistics'?renderStats():renderLabels();const mainClass=activeTab==='pos'?'pos-main w-full p-1':(device.mode==='mobile'?'w-full p-2':'max-w-7xl mx-auto p-4');app.innerHTML=`${nav()}<main class="${mainClass}">${body}</main>`;if(tabChanged){lastRenderedTab=activeTab;requestAnimationFrame(()=>window.scrollTo(0,0))}if(activeTab==='statistics')setTimeout(drawStats,50);if(activeTab==='pos')setTimeout(()=>focusClassicBarcode(),30);updateCustomerDisplay();scheduleUniversalScrollLock(app);bindExclusiveCategoryAccordions(app);scheduleAutoLock();updateSyncStatusBadge()}
+function render(){deferredCloudRender=false;if(SUPABASE_ENABLED&&!supabaseBootDone)return renderSupabaseBootScreen();if(settingsTabMode&&!document.querySelector('.app-settings-tab'))setSettingsTabMode(false);if(currentUser&&!tabAllowed(activeTab))activeTab='dashboard';const currentWorkspace=settingsWorkspaceCurrent();if(settingsTabMode&&document.getElementById('settingsWorkspace')&&currentWorkspace?.kind==='tab'&&currentWorkspace.tab){settingsWorkspaceTab=currentWorkspace.tab;activeTab=currentWorkspace.tab;currentWorkspace.html=settingsWorkspaceTabHtml(currentWorkspace.tab);settingsWorkspaceShowCurrent(false);updateCustomerDisplay();return}const tabChanged=lastRenderedTab!==activeTab;const device=applyDeviceProfile();if((SUPABASE_ENABLED||state.settings.requireLogin)&&!currentUser)return loginScreen();const app=document.getElementById('app');app.style.background=state.config.background_color;const body=activeTab==='dashboard'?renderDashboard():activeTab==='pos'?renderPOS():activeTab==='products'?renderProducts():activeTab==='promoProducts'?renderProductPromotions():activeTab==='sales'?renderSales():activeTab==='statistics'?renderStats():renderLabels();const mainClass=activeTab==='pos'?'pos-main w-full p-1':(device.mode==='mobile'?'w-full p-2':'max-w-7xl mx-auto p-4');app.innerHTML=`${nav()}<main class="${mainClass}">${body}</main>`;if(tabChanged){lastRenderedTab=activeTab;requestAnimationFrame(()=>window.scrollTo(0,0))}if(activeTab==='statistics')setTimeout(drawStats,50);if(activeTab==='pos')setTimeout(()=>focusClassicBarcode(),30);updateCustomerDisplay();scheduleUniversalScrollLock(app);bindExclusiveCategoryAccordions(app);scheduleAutoLock();updateSyncStatusBadge();updateAppBrandingIcon()}
 
 function renderOwnerMobileReports(){const r=dailyReportData(localDateKey()),tx=r.taxSummary||{},month=localDateKey().slice(0,7);return `<div class="space-y-3"><section class="bg-indigo-50 border-2 border-indigo-200 rounded-2xl p-4"><div class="flex justify-between gap-3"><div><h1 class="text-xl font-bold text-indigo-900">👁️ โหมดเจ้าของมือถือ</h1><p class="text-sm text-indigo-700">ดูรายงานอย่างเดียว • ไม่มีปุ่มขาย แก้ ลบ คืนสินค้า หรือปิดยอด</p></div><button onclick="disableOwnerReportOnly()" class="bg-white border border-indigo-300 rounded-xl px-3 py-2 text-sm font-bold">ปิดโหมด</button></div></section><div class="grid grid-cols-2 gap-2"><div class="bg-white rounded-2xl p-4 shadow"><div class="text-xs text-slate-500">ยอดขายวันนี้</div><b class="text-2xl text-emerald-700">${money(r.revenue)}</b></div><div class="bg-white rounded-2xl p-4 shadow"><div class="text-xs text-slate-500">กำไรสุทธิวันนี้</div><b class="text-2xl ${r.netProfit>=0?'text-emerald-700':'text-red-700'}">${money(r.netProfit)}</b></div><div class="bg-white rounded-2xl p-4 shadow"><div class="text-xs text-slate-500">VAT วันนี้</div><b class="text-xl">${money(tx.vat||0)}</b></div><div class="bg-white rounded-2xl p-4 shadow"><div class="text-xs text-slate-500">ยกเว้น VAT</div><b class="text-xl">${money(tx.nonTax||0)}</b></div></div><div class="grid grid-cols-2 gap-2"><button onclick="openDailyReport()" class="bg-white rounded-2xl p-4 shadow text-left"><div class="text-3xl">📊</div><b>รายงานวันนี้</b></button><button onclick="openMonthlyTaxSummary('${month}')" class="bg-white rounded-2xl p-4 shadow text-left"><div class="text-3xl">📅</div><b>ภาษีรายเดือน</b></button><button onclick="openStoreModule('statistics')" class="bg-white rounded-2xl p-4 shadow text-left"><div class="text-3xl">📈</div><b>สถิติ / กำไร</b></button><button onclick="openStoreModule('sales')" class="bg-white rounded-2xl p-4 shadow text-left"><div class="text-3xl">🧾</div><b>บิลย้อนหลัง</b></button><button onclick="openDeadStockReport(30)" class="bg-white rounded-2xl p-4 shadow text-left"><div class="text-3xl">🐢</div><b>สินค้าค้างสต็อก</b></button><button onclick="openAccountingExport()" class="bg-white rounded-2xl p-4 shadow text-left"><div class="text-3xl">📤</div><b>Export บัญชี</b></button></div></div>`}
 
@@ -2826,7 +3033,7 @@ let deviceResizeTimer=null;
 function handleDeviceViewportChange(){clearTimeout(deviceResizeTimer);deviceResizeTimer=setTimeout(()=>{const before=lastAppliedDeviceSignature;applyDeviceProfile();if(currentUser&&!cloudRenderIsBusy()&&(before!==lastAppliedDeviceSignature||activeTab==='pos'))render()},220)}
 window.addEventListener('resize',handleDeviceViewportChange,{passive:true});
 window.addEventListener('orientationchange',handleDeviceViewportChange,{passive:true});
-renderSupabaseBootScreen();ensureProductImageHashes();(async()=>{await bootstrapLocalPermanentStorage();await bootstrapSupabase();await initLegacySDK();setTimeout(()=>ensureDailyRestorePoint(),800)})();
+updateAppBrandingIcon(true);renderSupabaseBootScreen();ensureProductImageHashes();(async()=>{await bootstrapLocalPermanentStorage();updateAppBrandingIcon(true);await bootstrapSupabase();await initLegacySDK();setTimeout(()=>ensureDailyRestorePoint(),800)})();
 </script>
 </body>
 </html>
