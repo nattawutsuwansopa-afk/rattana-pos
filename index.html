@@ -8,7 +8,7 @@
   <meta name="apple-mobile-web-app-capable" content="yes">
   <meta name="apple-mobile-web-app-status-bar-style" content="default">
   <meta name="apple-mobile-web-app-title" content="Rattana POS">
-  <title>Rattana POS - User Admin + Store Logo v6.18.63</title>
+  <title>Rattana POS - User Admin Stay v6.18.65</title>
   <script src="https://cdn.tailwindcss.com"></script>
   <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
   <script src="https://unpkg.com/html5-qrcode@2.3.8/html5-qrcode.min.js"></script>
@@ -728,7 +728,7 @@ function isSupabaseRecoveryUrl(){const a=parseSupabaseAuthUrl();return a.type===
 function cleanSupabaseRecoveryUrl(){localStorage.removeItem(SUPABASE_RECOVERY_PENDING_KEY);try{history.replaceState(null,'',location.pathname)}catch(_){} }
 function supabaseLoginScreen(message='',kind='error'){
   supabaseRecoveryMode=false;supabaseBootDone=true;const app=document.getElementById('app'),msgClass=kind==='success'?'bg-emerald-50 border-emerald-200 text-emerald-700':'bg-red-50 border-red-200 text-red-700',saved=rememberedSupabaseEmail();
-  app.innerHTML=`<div class="min-h-screen flex items-center justify-center p-4" style="background:${state.config.background_color}"><div class="w-full max-w-md bg-white rounded-3xl shadow-2xl p-7"><div class="text-center mb-6"><div class="text-6xl">🔗</div><h1 class="text-2xl font-bold mt-2">เชื่อมเครื่องกับร้าน</h1><p class="text-slate-500">ทำครั้งเดียวบนเครื่องนี้</p><p class="text-xs text-emerald-700 mt-1">หลังจากนี้พนักงานเข้าใช้งานด้วยชื่อ + PIN เท่านั้น • v6.18.63</p></div>${message?`<div class="${msgClass} border rounded-xl p-3 mb-3 text-sm">${esc(message)}</div>`:''}<form autocomplete="on" onsubmit="event.preventDefault();doSupabaseLogin()"><label class="block font-semibold mb-1">อีเมลเจ้าของร้าน</label><input id="sbEmail" name="email" type="email" value="${esc(saved)}" autocomplete="username" class="w-full border rounded-xl px-4 py-3 mb-3" placeholder="owner@example.com" onkeydown="if(event.key==='Enter')document.getElementById('sbPassword').focus()"><label class="block font-semibold mb-1">รหัสผ่านบัญชีเจ้าของร้าน</label><div class="relative"><input id="sbPassword" name="password" type="password" autocomplete="current-password" class="w-full border rounded-xl pl-4 pr-12 py-3"><button type="button" onclick="toggleSupabasePassword('sbPassword',this)" class="absolute right-2 top-1/2 -translate-y-1/2 px-2 py-1 text-xl">👁️</button></div><label class="flex items-center gap-2 mt-3 text-sm"><input id="sbRememberEmail" type="checkbox" checked> จำอีเมลบนเครื่องนี้</label><button id="sbLoginBtn" type="submit" class="w-full mt-4 rounded-xl py-3 bg-emerald-600 text-white font-bold text-lg">เชื่อมเครื่องนี้กับร้าน</button></form>${canUseOfflinePinAccess()?`<button type="button" onclick="enterOfflinePinMode('เข้าใช้งานจากข้อมูลที่บันทึกไว้ในเครื่อง')" class="w-full mt-2 rounded-xl py-3 bg-indigo-50 border border-indigo-300 text-indigo-900 font-bold">📴 เข้า POS ด้วย PIN ออฟไลน์</button>`:''}<button type="button" onclick="supabaseForgotPasswordScreen()" class="w-full mt-2 rounded-xl py-3 bg-amber-50 border border-amber-300 text-amber-900 font-bold">🔑 ลืมรหัสผ่านเจ้าของร้าน?</button><div class="mt-4 rounded-xl bg-sky-50 border border-sky-200 p-3 text-sm text-sky-900"><b>ง่ายแบบหน้าร้าน:</b> บัญชี Supabase ใช้เฉพาะตอนเชื่อมเครื่องครั้งแรก หลังเชื่อมสำเร็จจะไม่ถามอีเมล/รหัสผ่านทุกวันอีก พนักงานเลือกชื่อแล้วใส่ PIN 4–6 หลัก即可</div></div></div>`;
+  app.innerHTML=`<div class="min-h-screen flex items-center justify-center p-4" style="background:${state.config.background_color}"><div class="w-full max-w-md bg-white rounded-3xl shadow-2xl p-7"><div class="text-center mb-6"><div class="text-6xl">🔗</div><h1 class="text-2xl font-bold mt-2">เชื่อมเครื่องกับร้าน</h1><p class="text-slate-500">ทำครั้งเดียวบนเครื่องนี้</p><p class="text-xs text-emerald-700 mt-1">หลังจากนี้พนักงานเข้าใช้งานด้วยชื่อ + PIN เท่านั้น • v6.18.65</p></div>${message?`<div class="${msgClass} border rounded-xl p-3 mb-3 text-sm">${esc(message)}</div>`:''}<form autocomplete="on" onsubmit="event.preventDefault();doSupabaseLogin()"><label class="block font-semibold mb-1">อีเมลเจ้าของร้าน</label><input id="sbEmail" name="email" type="email" value="${esc(saved)}" autocomplete="username" class="w-full border rounded-xl px-4 py-3 mb-3" placeholder="owner@example.com" onkeydown="if(event.key==='Enter')document.getElementById('sbPassword').focus()"><label class="block font-semibold mb-1">รหัสผ่านบัญชีเจ้าของร้าน</label><div class="relative"><input id="sbPassword" name="password" type="password" autocomplete="current-password" class="w-full border rounded-xl pl-4 pr-12 py-3"><button type="button" onclick="toggleSupabasePassword('sbPassword',this)" class="absolute right-2 top-1/2 -translate-y-1/2 px-2 py-1 text-xl">👁️</button></div><label class="flex items-center gap-2 mt-3 text-sm"><input id="sbRememberEmail" type="checkbox" checked> จำอีเมลบนเครื่องนี้</label><button id="sbLoginBtn" type="submit" class="w-full mt-4 rounded-xl py-3 bg-emerald-600 text-white font-bold text-lg">เชื่อมเครื่องนี้กับร้าน</button></form>${canUseOfflinePinAccess()?`<button type="button" onclick="enterOfflinePinMode('เข้าใช้งานจากข้อมูลที่บันทึกไว้ในเครื่อง')" class="w-full mt-2 rounded-xl py-3 bg-indigo-50 border border-indigo-300 text-indigo-900 font-bold">📴 เข้า POS ด้วย PIN ออฟไลน์</button>`:''}<button type="button" onclick="supabaseForgotPasswordScreen()" class="w-full mt-2 rounded-xl py-3 bg-amber-50 border border-amber-300 text-amber-900 font-bold">🔑 ลืมรหัสผ่านเจ้าของร้าน?</button><div class="mt-4 rounded-xl bg-sky-50 border border-sky-200 p-3 text-sm text-sky-900"><b>ง่ายแบบหน้าร้าน:</b> บัญชี Supabase ใช้เฉพาะตอนเชื่อมเครื่องครั้งแรก หลังเชื่อมสำเร็จจะไม่ถามอีเมล/รหัสผ่านทุกวันอีก พนักงานเลือกชื่อแล้วใส่ PIN 4–6 หลัก即可</div></div></div>`;
   setTimeout(()=>document.getElementById(saved?'sbPassword':'sbEmail')?.focus(),30)
 }
 function supabaseSignupScreen(message='',kind='error'){
@@ -918,7 +918,7 @@ function simplePinLoginScreen(message='',kind='error'){
   const users=simplePinUsers().slice().sort((a,b)=>a.role==='owner'&&b.role!=='owner'?-1:b.role==='owner'&&a.role!=='owner'?1:String(a.name||'').localeCompare(String(b.name||''),'th'));
   if(!users.length)return simplePinSetupScreen(message);
   const msgClass=kind==='success'?'bg-emerald-50 border-emerald-200 text-emerald-700':'bg-red-50 border-red-200 text-red-700';
-  app.innerHTML=`<div class="min-h-screen flex items-center justify-center p-4" style="background:${state.config.background_color}"><div class="w-full max-w-md bg-white rounded-3xl shadow-2xl p-7"><div class="text-center mb-5"><div class="text-6xl">🛒</div><h1 class="text-2xl font-bold mt-2">${esc(state.config.store_name)}</h1><p class="text-slate-500">เลือกชื่อ • ใส่ PIN • เข้างาน</p><p class="text-xs text-emerald-700 mt-1">🟢 เครื่องเชื่อมร้านแล้ว • v6.18.63</p></div>${message?`<div class="${msgClass} border rounded-xl p-3 mb-3 text-sm">${esc(message)}</div>`:''}<label class="block font-semibold mb-1">ผู้ใช้งาน</label><select id="loginUser" onchange="updateOwnerForgotPinVisibility()" class="w-full border rounded-xl px-4 py-3 mb-3 text-lg">${users.map(u=>`<option value="${esc(u.id)}">${esc(u.name)}${normalizePosUserEmail(u.email)?` • ${esc(normalizePosUserEmail(u.email))}`:''} — ${roleName(u.role)}</option>`).join('')}</select><label class="block font-semibold mb-1">PIN</label><input id="loginPin" inputmode="numeric" type="password" maxlength="6" autocomplete="off" class="w-full border rounded-xl px-4 py-3 text-center text-3xl tracking-widest" onkeydown="if(event.key==='Enter')doLogin()"><button onclick="doLogin()" class="w-full mt-4 rounded-xl py-3 text-white font-bold text-lg" style="background:${state.config.primary_action_color}">เข้าใช้งาน</button><div id="ownerForgotPinBox" class="hidden mt-3 space-y-2"><button onclick="openOwnerForgotPin()" class="w-full rounded-xl py-3 bg-amber-50 border border-amber-300 text-amber-900 font-bold">🔑 ลืม PIN เจ้าของร้าน?</button><button onclick="supabaseForgotPasswordScreen()" class="w-full rounded-xl py-3 bg-sky-50 border border-sky-300 text-sky-900 font-bold">📧 ลืมรหัสผ่านบัญชี Owner?</button><div class="text-xs text-slate-500 text-center">ปุ่มนี้แสดงเฉพาะ Owner • รีเซ็ตผ่าน Rattana POS ได้</div></div><div class="mt-4 rounded-xl bg-slate-50 border p-3 text-xs text-slate-600">พนักงานลืม PIN ให้เจ้าของร้านเข้า <b>ตั้งค่า → ผู้ใช้งานและ PIN</b> แล้วตั้งใหม่ให้</div></div></div>`;
+  app.innerHTML=`<div class="min-h-screen flex items-center justify-center p-4" style="background:${state.config.background_color}"><div class="w-full max-w-md bg-white rounded-3xl shadow-2xl p-7"><div class="text-center mb-5"><div class="text-6xl">🛒</div><h1 class="text-2xl font-bold mt-2">${esc(state.config.store_name)}</h1><p class="text-slate-500">เลือกชื่อ • ใส่ PIN • เข้างาน</p><p class="text-xs text-emerald-700 mt-1">🟢 เครื่องเชื่อมร้านแล้ว • v6.18.65</p></div>${message?`<div class="${msgClass} border rounded-xl p-3 mb-3 text-sm">${esc(message)}</div>`:''}<label class="block font-semibold mb-1">ผู้ใช้งาน</label><select id="loginUser" onchange="updateOwnerForgotPinVisibility()" class="w-full border rounded-xl px-4 py-3 mb-3 text-lg">${users.map(u=>`<option value="${esc(u.id)}">${esc(u.name)}${normalizePosUserEmail(u.email)?` • ${esc(normalizePosUserEmail(u.email))}`:''} — ${roleName(u.role)}</option>`).join('')}</select><label class="block font-semibold mb-1">PIN</label><input id="loginPin" inputmode="numeric" type="password" maxlength="6" autocomplete="off" class="w-full border rounded-xl px-4 py-3 text-center text-3xl tracking-widest" onkeydown="if(event.key==='Enter')doLogin()"><button onclick="doLogin()" class="w-full mt-4 rounded-xl py-3 text-white font-bold text-lg" style="background:${state.config.primary_action_color}">เข้าใช้งาน</button><div id="ownerForgotPinBox" class="hidden mt-3 space-y-2"><button onclick="openOwnerForgotPin()" class="w-full rounded-xl py-3 bg-amber-50 border border-amber-300 text-amber-900 font-bold">🔑 ลืม PIN เจ้าของร้าน?</button><button onclick="supabaseForgotPasswordScreen()" class="w-full rounded-xl py-3 bg-sky-50 border border-sky-300 text-sky-900 font-bold">📧 ลืมรหัสผ่านบัญชี Owner?</button><div class="text-xs text-slate-500 text-center">ปุ่มนี้แสดงเฉพาะ Owner • รีเซ็ตผ่าน Rattana POS ได้</div></div><div class="mt-4 rounded-xl bg-slate-50 border p-3 text-xs text-slate-600">พนักงานลืม PIN ให้เจ้าของร้านเข้า <b>ตั้งค่า → ผู้ใช้งานและ PIN</b> แล้วตั้งใหม่ให้</div></div></div>`;
   setTimeout(()=>{updateOwnerForgotPinVisibility();document.getElementById('loginPin')?.focus()},30)
 }
 function openOwnerForgotPin(){
@@ -961,7 +961,7 @@ function pinLogout(){
 function openMachineLinkSettings(){
   if(currentUser?.role!=='owner')return toast('เฉพาะเจ้าของร้านเท่านั้น',true);
   const connected=!!supabaseSession?.user;
-  modal(`<div class="bg-white rounded-2xl p-6 max-w-md mx-auto"><h3 class="text-2xl font-bold">🔗 การเชื่อมเครื่องกับร้าน</h3><div class="mt-3 rounded-xl ${connected?'bg-emerald-50 border-emerald-200':'bg-amber-50 border-amber-200'} border p-3 text-sm"><b>สถานะ:</b> ${connected?'เชื่อม Supabase แล้ว ✅':'ใช้งาน PIN จากข้อมูลในเครื่อง 🟡'}<br><b>บัญชีคลาวด์:</b> ${esc(supabaseSession?.user?.email||'ยังไม่ได้เชื่อม')}<br><b>การเข้าหน้าร้าน:</b> ชื่อผู้ใช้ + PIN</div>${connected?`<p class="text-xs text-slate-500 mt-3">ปกติไม่ต้องเปลี่ยนการเชื่อมนี้ หากยกเลิก เครื่องจะกลับไปขออีเมล/รหัสผ่านเจ้าของร้านอีกครั้ง</p><div class="grid grid-cols-2 gap-2 mt-4"><button onclick="closeModal(this)" class="bg-slate-200 rounded-xl p-3 font-bold">ปิด</button><button onclick="unlinkSupabaseMachine(this)" class="bg-red-100 text-red-700 rounded-xl p-3 font-bold">ยกเลิกการเชื่อมเครื่อง</button></div>`:`<p class="text-xs text-slate-500 mt-3">POS ยังขายจากข้อมูลในเครื่องได้ แต่จะยังไม่ซิงก์ข้ามเครื่องจนกว่า Owner จะเชื่อม Supabase ใหม่</p><div class="grid grid-cols-2 gap-2 mt-4"><button onclick="closeModal(this)" class="bg-slate-200 rounded-xl p-3 font-bold">ปิด</button><button onclick="closeModal(this);supabaseLoginScreen('กรอกบัญชี Owner เพื่อเชื่อม Supabase ใหม่','success')" class="bg-emerald-600 text-white rounded-xl p-3 font-bold">☁️ เชื่อมใหม่</button></div>`}</div>`)
+  modal(`<div class="bg-white rounded-2xl p-6 max-w-md mx-auto"><h3 class="text-2xl font-bold">🔗 การเชื่อมเครื่องกับร้าน</h3><div class="mt-2 rounded-xl bg-amber-50 border border-amber-200 p-3 text-xs text-amber-900"><b>เมนูสำหรับ Owner เท่านั้น:</b> เก็บไว้ในหน้าตั้งค่าเพื่อป้องกันการกดเปลี่ยน/ยกเลิกการเชื่อมโดยไม่ตั้งใจ</div><div class="mt-3 rounded-xl ${connected?'bg-emerald-50 border-emerald-200':'bg-amber-50 border-amber-200'} border p-3 text-sm"><b>สถานะ:</b> ${connected?'เชื่อม Supabase แล้ว ✅':'ใช้งาน PIN จากข้อมูลในเครื่อง 🟡'}<br><b>บัญชีคลาวด์:</b> ${esc(supabaseSession?.user?.email||'ยังไม่ได้เชื่อม')}<br><b>การเข้าหน้าร้าน:</b> ชื่อผู้ใช้ + PIN</div>${connected?`<p class="text-xs text-slate-500 mt-3">ปกติไม่ต้องเปลี่ยนการเชื่อมนี้ หากยกเลิก เครื่องจะกลับไปขออีเมล/รหัสผ่านเจ้าของร้านอีกครั้ง</p><div class="grid grid-cols-2 gap-2 mt-4"><button onclick="closeModal(this)" class="bg-slate-200 rounded-xl p-3 font-bold">ปิด</button><button onclick="unlinkSupabaseMachine(this)" class="bg-red-100 text-red-700 rounded-xl p-3 font-bold">ยกเลิกการเชื่อมเครื่อง</button></div>`:`<p class="text-xs text-slate-500 mt-3">POS ยังขายจากข้อมูลในเครื่องได้ แต่จะยังไม่ซิงก์ข้ามเครื่องจนกว่า Owner จะเชื่อม Supabase ใหม่</p><div class="grid grid-cols-2 gap-2 mt-4"><button onclick="closeModal(this)" class="bg-slate-200 rounded-xl p-3 font-bold">ปิด</button><button onclick="closeModal(this);supabaseLoginScreen('กรอกบัญชี Owner เพื่อเชื่อม Supabase ใหม่','success')" class="bg-emerald-600 text-white rounded-xl p-3 font-bold">☁️ เชื่อมใหม่</button></div>`}</div>`)
 }
 
 async function unlinkSupabaseMachine(btn){
@@ -1259,34 +1259,71 @@ function canDeletePosUser(u){
   if(currentUser&&String(currentUser.id)===String(u.id))return false;
   return true
 }
-function openUsers(){
-  if(!requirePermission('manageUsers','ไม่มีสิทธิ์จัดการผู้ใช้ / PIN'))return;
+function usersAdminHtml(){
   const rows=(state.users||[]).slice().sort((a,b)=>a.role==='owner'&&b.role!=='owner'?-1:b.role==='owner'&&a.role!=='owner'?1:String(a.name||'').localeCompare(String(b.name||''),'th'));
-  modal(`<div class="bg-white rounded-2xl p-6 max-w-5xl mx-auto max-h-[92vh] overflow-y-auto">
+  const ownerView=currentUser?.role==='owner';
+  return `<div class="bg-white rounded-2xl p-6 max-w-6xl mx-auto max-h-[92vh] overflow-y-auto">
     <div class="flex flex-wrap justify-between items-center gap-3 mb-4">
-      <div><h3 class="text-2xl font-bold">👥 ผู้ใช้งาน / PIN / อีเมล</h3><p class="text-sm text-slate-500">เพิ่ม แก้ไข ปิด หรือลบผู้ใช้งานจากผู้ดูแลระบบ</p></div>
+      <div><h3 class="text-2xl font-bold">👥 ผู้ใช้งาน / PIN / อีเมล</h3><p class="text-sm text-slate-500">เพิ่ม แก้ไข ดู PIN หรือลบผู้ใช้งานจากหน้าเดียว</p></div>
       <button onclick="closeModal(this)" class="text-3xl">×</button>
     </div>
-    <div class="rounded-xl bg-sky-50 border border-sky-200 p-3 text-sm text-sky-900 mb-4">
-      <b>อีเมลผู้ใช้งาน</b> ใช้เป็นข้อมูลประจำตัวใน POS และซิงก์ข้ามเครื่อง พนักงานยังเข้าใช้งานด้วย <b>ชื่อ + PIN</b> ไม่ต้องสมัคร Supabase เอง
+    <div class="rounded-xl bg-sky-50 border border-sky-200 p-3 text-sm text-sky-900 mb-3">
+      พนักงานเข้า POS ด้วย <b>ชื่อ + PIN</b> • อีเมลเป็นข้อมูลประจำตัวใน POS และซิงก์ข้ามเครื่อง
+    </div>
+    <div class="rounded-xl bg-amber-50 border border-amber-200 p-3 text-xs text-amber-900 mb-4">
+      <b>หมายเหตุ:</b> Owner สามารถดู PIN ของ POS ได้ แต่ <b>รหัสผ่านบัญชี Supabase ไม่สามารถดูย้อนหลังได้</b> เพราะ Supabase ไม่เก็บรหัสจริงให้อ่าน
     </div>
     <div class="overflow-auto border rounded-xl">
-      <table class="w-full text-sm min-w-[760px]">
-        <thead><tr class="bg-slate-100"><th class="p-2 text-left">ชื่อ</th><th class="p-2 text-left">อีเมล</th><th>สิทธิ์</th><th>สถานะ</th><th class="p-2 text-right">จัดการ</th></tr></thead>
+      <table class="w-full text-sm min-w-[900px]">
+        <thead><tr class="bg-slate-100">
+          <th class="p-2 text-left">ชื่อ</th>
+          <th class="p-2 text-left">อีเมล</th>
+          <th class="p-2 text-center">PIN POS</th>
+          <th class="p-2 text-center">สิทธิ์</th>
+          <th class="p-2 text-center">สถานะ</th>
+          <th class="p-2 text-right">จัดการ</th>
+        </tr></thead>
         <tbody>${rows.map(u=>`<tr class="border-b">
           <td class="p-2 font-semibold">${esc(u.name||'-')}</td>
           <td class="p-2 text-slate-600">${esc(normalizePosUserEmail(u.email)||'-')}</td>
+          <td class="p-2 text-center">
+            ${ownerView?`<span id="userPin_${esc(u.id)}" class="font-mono tracking-widest">••••</span>
+            <button onclick="toggleUserPinView('${u.id}',this)" class="ml-2 px-2 py-1 rounded bg-slate-100 border text-xs">👁️ ดู</button>`:'••••'}
+          </td>
           <td class="text-center">${roleName(u.role)}</td>
           <td class="text-center">${u.active!==false?'✅ เปิด':'⛔ ปิด'}</td>
           <td class="text-right p-2 whitespace-nowrap">
             <button onclick="editUser('${u.id}')" class="px-3 py-1.5 rounded bg-slate-200">แก้ไข</button>
-            ${canDeletePosUser(u)&&currentUser?.role==='owner'?`<button onclick="deletePosUser('${u.id}',this)" class="ml-1 px-3 py-1.5 rounded bg-red-50 text-red-700 border border-red-200">ลบ</button>`:''}
+            ${canDeletePosUser(u)&&ownerView?`<button onclick="deletePosUser('${u.id}',this)" class="ml-1 px-3 py-1.5 rounded bg-red-50 text-red-700 border border-red-200">🗑️ ลบ</button>`:''}
           </td>
         </tr>`).join('')}</tbody>
       </table>
     </div>
     <button onclick="addUser()" class="mt-4 px-4 py-3 rounded-xl text-white font-bold" style="background:${state.config.primary_action_color}">+ เพิ่มผู้ใช้งาน</button>
-  </div>`)
+  </div>`
+}
+function refreshUsersAdminPage(){
+  if(settingsTabMode&&document.getElementById('settingsWorkspace')&&settingsWorkspaceCurrent()){
+    const page=settingsWorkspaceCurrent();
+    page.html=usersAdminHtml();
+    page.title='👥 ผู้ใช้งาน / PIN / อีเมล';
+    settingsWorkspaceShowCurrent(false);
+    return
+  }
+  const root=document.querySelector('.app-modal-root:last-of-type .app-modal-viewport');
+  if(root)root.innerHTML=usersAdminHtml()
+}
+function toggleUserPinView(id,btn){
+  if(currentUser?.role!=='owner')return toast('เฉพาะ Owner ที่ดู PIN ได้',true);
+  const u=state.users.find(x=>String(x.id)===String(id));if(!u)return;
+  const el=document.getElementById('userPin_'+id);if(!el)return;
+  const visible=btn?.dataset?.visible==='1';
+  el.textContent=visible?'••••':String(u.pin||'ไม่มี PIN');
+  if(btn){btn.dataset.visible=visible?'0':'1';btn.textContent=visible?'👁️ ดู':'🙈 ซ่อน'}
+}
+function openUsers(){
+  if(!requirePermission('manageUsers','ไม่มีสิทธิ์จัดการผู้ใช้ / PIN'))return;
+  modal(usersAdminHtml())
 }
 function addUser(){
   if(!requirePermission('manageUsers','ไม่มีสิทธิ์จัดการผู้ใช้'))return;
@@ -1302,9 +1339,12 @@ function addUser(){
       <option value="manager">ผู้จัดการ</option>
     </select>
     <label class="block text-sm font-semibold mb-1">PIN 4–6 หลัก</label>
-    <input id="uPin" maxlength="6" placeholder="เช่น 1234" class="w-full border rounded-lg p-3 mb-4 text-center text-2xl tracking-widest" inputmode="numeric" type="password">
+    <div class="relative mb-4">
+      <input id="uPin" maxlength="6" placeholder="เช่น 1234" class="w-full border rounded-lg p-3 pr-12 text-center text-2xl tracking-widest" inputmode="numeric" type="password">
+      <button type="button" onclick="toggleSupabasePassword('uPin',this)" class="absolute right-2 top-1/2 -translate-y-1/2 px-2 py-1 text-xl">👁️</button>
+    </div>
     <div class="rounded-lg bg-amber-50 border border-amber-200 p-3 text-xs text-amber-900 mb-4">
-      บัญชี <b>Owner</b> มาจากบัญชีเจ้าของร้านที่เชื่อม Supabase เท่านั้น เพื่อกันสร้าง Owner ปลอมจากหน้าพนักงาน
+      บัญชี <b>Owner</b> มาจากบัญชีเจ้าของร้านที่เชื่อม Supabase เท่านั้น เพื่อกันสร้าง Owner ปลอม
     </div>
     <div class="flex gap-2"><button onclick="closeModal(this)" class="flex-1 bg-slate-200 rounded-lg p-3">ยกเลิก</button><button onclick="saveNewUser(this)" class="flex-1 text-white rounded-lg p-3 font-bold" style="background:${state.config.primary_action_color}">บันทึก</button></div>
   </div>`)
@@ -1319,10 +1359,14 @@ function saveNewUser(btn){
   const newUser={id:uid('u'),name,email,role,pin,active:true,permissions:{}};
   state.users.push(newUser);
   audit('user_create',`${name} • ${email||'ไม่มีอีเมล'} • ${roleName(role)}`,'user',newUser.id);
-  saveState();closeModal(btn);document.querySelectorAll('.fixed.inset-0').forEach(x=>x.remove());openUsers()
+  saveState();
+  closeModal(btn);
+  setTimeout(()=>{refreshUsersAdminPage();toast('เพิ่มผู้ใช้งานแล้ว')},0)
 }
 function editUser(id){
   const u=state.users.find(x=>x.id===id);if(!u)return;
+  const ownerView=currentUser?.role==='owner';
+  const currentPin=ownerView?String(u.pin||''):'';
   modal(`<div class="bg-white rounded-2xl p-6 max-w-md mx-auto">
     <h3 class="text-xl font-bold mb-4">✏️ แก้ไข ${esc(u.name)}</h3>
     <label class="block text-sm font-semibold mb-1">ชื่อผู้ใช้งาน</label>
@@ -1335,11 +1379,15 @@ function editUser(id){
       <option value="manager" ${u.role==='manager'?'selected':''}>ผู้จัดการ</option>
       ${u.role==='owner'?'<option value="owner" selected>เจ้าของร้าน</option>':''}
     </select>
-    <label class="block text-sm font-semibold mb-1">PIN ใหม่ <span class="text-slate-400">(เว้นว่างถ้าไม่เปลี่ยน)</span></label>
-    <input id="euPin" maxlength="6" placeholder="PIN ใหม่ 4–6 หลัก" class="w-full border rounded-lg p-3 mb-3 text-center text-2xl tracking-widest" inputmode="numeric" type="password">
+    <label class="block text-sm font-semibold mb-1">${ownerView?'PIN POS':'PIN ใหม่'} <span class="text-slate-400">${ownerView?'(กด 👁️ เพื่อดู / แก้ได้เลย)':'(เว้นว่างถ้าไม่เปลี่ยน)'}</span></label>
+    <div class="relative mb-3">
+      <input id="euPin" maxlength="6" value="${esc(currentPin)}" placeholder="PIN 4–6 หลัก" class="w-full border rounded-lg p-3 pr-12 text-center text-2xl tracking-widest" inputmode="numeric" type="password">
+      ${ownerView?`<button type="button" onclick="toggleSupabasePassword('euPin',this)" class="absolute right-2 top-1/2 -translate-y-1/2 px-2 py-1 text-xl">👁️</button>`:''}
+    </div>
     <label class="flex gap-2 mb-4 items-center"><input id="euActive" type="checkbox" class="w-5 h-5" ${u.active!==false?'checked':''} ${u.role==='owner'?'disabled':''}> เปิดใช้งาน</label>
-    ${u.role==='owner'?'<div class="rounded-lg bg-amber-50 border border-amber-200 p-3 text-xs text-amber-900 mb-4">Owner หลักลบ ปิด หรือลดสิทธิ์จากหน้านี้ไม่ได้</div>':''}
+    ${u.role==='owner'?'<div class="rounded-lg bg-amber-50 border border-amber-200 p-3 text-xs text-amber-900 mb-4">Owner หลักยังกันลบ/ปิด/ลดสิทธิ์ เพื่อป้องกันร้านถูกล็อกออกจากระบบ</div>':''}
     <div class="flex gap-2"><button onclick="closeModal(this)" class="flex-1 bg-slate-200 rounded p-3">ยกเลิก</button><button onclick="saveEditUser('${u.id}',this)" class="flex-1 text-white rounded p-3 font-bold" style="background:${state.config.primary_action_color}">บันทึก</button></div>
+    ${canDeletePosUser(u)&&ownerView?`<button onclick="deletePosUserFromEdit('${u.id}',this)" class="w-full mt-3 bg-red-50 text-red-700 border border-red-200 rounded-xl p-3 font-bold">🗑️ ลบบัญชีผู้ใช้งานนี้</button>`:''}
   </div>`)
 }
 function saveEditUser(id,btn){
@@ -1350,7 +1398,7 @@ function saveEditUser(id,btn){
   if(!isValidPosUserEmail(email))return toast('รูปแบบอีเมลไม่ถูกต้อง',true);
   if(posUserEmailExists(email,id))return toast('อีเมลนี้ถูกใช้กับผู้ใช้งานคนอื่นแล้ว',true);
   if(pin&&!/^[0-9]{4,6}$/.test(pin))return toast('PIN ต้องเป็นตัวเลข 4–6 หลัก',true);
-  const before={name:u.name,email:normalizePosUserEmail(u.email),role:u.role,active:u.active!==false};
+  const before={name:u.name,email:normalizePosUserEmail(u.email),role:u.role,active:u.active!==false,pin:String(u.pin||'')};
   const nextRole=u.role==='owner'?'owner':(document.getElementById('euRole')?.value||u.role);
   const nextActive=u.role==='owner'?true:(document.getElementById('euActive')?.checked!==false);
   u.name=name;u.email=email;u.role=nextRole;u.active=nextActive;if(pin)u.pin=pin;
@@ -1359,19 +1407,32 @@ function saveEditUser(id,btn){
   if(before.email!==u.email)changes.push(`อีเมล ${before.email||'-'} → ${u.email||'-'}`);
   if(before.role!==u.role)changes.push(`สิทธิ์ ${roleName(before.role)} → ${roleName(u.role)}`);
   if(before.active!==u.active)changes.push(u.active?'เปิดใช้งาน':'ปิดใช้งาน');
-  if(pin)changes.push('เปลี่ยน PIN');
+  if(before.pin!==String(u.pin||''))changes.push('เปลี่ยน PIN');
   audit('user_edit',`${u.name} • ${changes.join(' • ')||'บันทึกข้อมูลผู้ใช้'}`,'user',u.id);
-  saveState();closeModal(btn);toast('บันทึกผู้ใช้แล้ว')
+  if(currentUser&&String(currentUser.id)===String(u.id))currentUser={id:u.id,name:u.name,role:u.role};
+  saveState();saveSessionUser();
+  closeModal(btn);
+  setTimeout(()=>{refreshUsersAdminPage();toast('บันทึกผู้ใช้แล้ว')},0)
 }
-function deletePosUser(id,btn){
-  if(!requireRole(['owner']))return toast('เฉพาะเจ้าของร้านที่ลบผู้ใช้งานได้',true);
-  const u=state.users.find(x=>x.id===id);if(!u)return;
-  if(u.role==='owner')return toast('ไม่สามารถลบบัญชี Owner หลักได้',true);
-  if(currentUser&&String(currentUser.id)===String(u.id))return toast('ไม่สามารถลบบัญชีที่กำลังใช้งานอยู่',true);
-  if(!confirm(`ลบผู้ใช้งาน "${u.name}" ออกจากระบบ?\n\nประวัติการขายและ Audit เดิมจะยังคงอยู่`))return;
+function deletePosUserCore(id){
+  if(!requireRole(['owner'])){toast('เฉพาะเจ้าของร้านที่ลบผู้ใช้งานได้',true);return false}
+  const u=state.users.find(x=>String(x.id)===String(id));if(!u)return false;
+  if(u.role==='owner'){toast('ไม่สามารถลบบัญชี Owner หลักได้',true);return false}
+  if(currentUser&&String(currentUser.id)===String(u.id)){toast('ไม่สามารถลบบัญชีที่กำลังใช้งานอยู่',true);return false}
+  if(!confirm(`ลบผู้ใช้งาน "${u.name}" ออกจากระบบ?\n\nประวัติการขายและ Audit เดิมจะยังคงอยู่`))return false;
   state.users=state.users.filter(x=>String(x.id)!==String(id));
   audit('user_delete',`${u.name} • ${normalizePosUserEmail(u.email)||'ไม่มีอีเมล'} • ${roleName(u.role)}`,'user',id);
-  saveState();closeModal(btn);document.querySelectorAll('.fixed.inset-0').forEach(x=>x.remove());openUsers();toast('ลบผู้ใช้งานแล้ว')
+  saveState();return true
+}
+function deletePosUser(id,btn){
+  if(!deletePosUserCore(id))return;
+  refreshUsersAdminPage();
+  toast('ลบผู้ใช้งานแล้ว')
+}
+function deletePosUserFromEdit(id,btn){
+  if(!deletePosUserCore(id))return;
+  closeModal(btn);
+  setTimeout(()=>{refreshUsersAdminPage();toast('ลบผู้ใช้งานแล้ว')},0)
 }
 
 
@@ -2789,7 +2850,7 @@ window.addEventListener('keydown',e=>{if((e.ctrlKey||e.metaKey)&&String(e.key).t
 function openPrimaryTab(tab){menuOpen=false;lastRenderedTab='';if(['products','promoProducts','sales','statistics','labels'].includes(tab))return openStoreModule(tab);activeTab=tab;render()}
 function nav(){
   const navCfg={...DEFAULT_TOP_NAV_SETTINGS,...(state.settings.topNav||{})},alertCount=frontAlertCount();
-  const menuPanel=`<div class="${menuOpen?'block':'hidden'} absolute right-0 top-full mt-1 bg-white shadow-xl border rounded-xl w-60 p-2 z-50">${ownerReportOnlyMode()?`<button onclick="menuOpen=false;disableOwnerReportOnly()" class="w-full text-left p-3 bg-indigo-50 text-indigo-800 rounded font-bold">👁️ ปิดโหมดดูอย่างเดียว</button>`:''}${canOpenStoreCenter()?`<button onclick="menuOpen=false;openSettings()" class="w-full text-left p-3 hover:bg-slate-100 rounded font-bold">⚙️ ตั้งค่า / ศูนย์จัดการร้าน</button>`:''}${hasPermission('viewReports')?`<button onclick="menuOpen=false;openDailyReport()" class="w-full text-left p-3 hover:bg-slate-100 rounded">📊 รายงานประจำวัน</button>`:''}<button onclick="menuOpen=false;openFrontAlerts()" class="w-full text-left p-3 hover:bg-slate-100 rounded">🔔 แจ้งเตือน (${alertCount})</button><div class="px-2 py-2 text-xs text-emerald-700 border-t mt-1">${supabaseStatusText()}<br><span class="text-slate-500">${localPermanentStatusText()}</span></div><div class="md:hidden px-2 py-2 text-xs text-slate-500">👤 ${esc(currentUser?.name||'')}</div>${currentUser?.role==='owner'?`<button onclick="menuOpen=false;openMachineLinkSettings()" class="w-full text-left p-2 hover:bg-slate-100 rounded">🔗 การเชื่อมเครื่อง</button>`:''}<button onclick="logout()" class="w-full text-left p-2 hover:bg-red-50 text-red-600 rounded">🚪 ออกจากงาน / เปลี่ยนผู้ใช้</button></div>`;
+  const menuPanel=`<div class="${menuOpen?'block':'hidden'} absolute right-0 top-full mt-1 bg-white shadow-xl border rounded-xl w-60 p-2 z-50">${ownerReportOnlyMode()?`<button onclick="menuOpen=false;disableOwnerReportOnly()" class="w-full text-left p-3 bg-indigo-50 text-indigo-800 rounded font-bold">👁️ ปิดโหมดดูอย่างเดียว</button>`:''}${canOpenStoreCenter()?`<button onclick="menuOpen=false;openSettings()" class="w-full text-left p-3 hover:bg-slate-100 rounded font-bold">⚙️ ตั้งค่า / ศูนย์จัดการร้าน</button>`:''}${hasPermission('viewReports')?`<button onclick="menuOpen=false;openDailyReport()" class="w-full text-left p-3 hover:bg-slate-100 rounded">📊 รายงานประจำวัน</button>`:''}<button onclick="menuOpen=false;openFrontAlerts()" class="w-full text-left p-3 hover:bg-slate-100 rounded">🔔 แจ้งเตือน (${alertCount})</button><div class="px-2 py-2 text-xs text-emerald-700 border-t mt-1">${supabaseStatusText()}<br><span class="text-slate-500">${localPermanentStatusText()}</span></div><div class="md:hidden px-2 py-2 text-xs text-slate-500">👤 ${esc(currentUser?.name||'')}</div><button onclick="logout()" class="w-full text-left p-2 hover:bg-red-50 text-red-600 rounded">🚪 ออกจากงาน / เปลี่ยนผู้ใช้</button></div>`;
   if(!navCfg.enabled)return `<div class="fixed top-2 right-2 z-40"><div class="relative"><button onclick="menuOpen=!menuOpen;render()" class="px-3 py-2 rounded-xl bg-white border shadow-lg font-bold" title="เมนูระบบ">☰</button>${menuPanel}</div></div>`;
   const tabs=[['dashboard','🏠','หน้าแรก'],['pos','🛒','ขายสินค้า'],['products','📦','สินค้า/สต็อก'],['promoProducts','🔥','สินค้าโปรโมชั่น'],['sales','🧾','บิลย้อนหลัง'],['statistics','📈','สถิติ/กำไร'],['labels','🏷️','ป้ายราคา']].filter(t=>tabAllowed(t[0])&&navCfg[t[0]]!==false);
   return `<div class="sticky top-0 z-30 bg-white border-b shadow-sm"><div class="max-w-7xl mx-auto px-3 py-2 flex gap-2 items-center"><div class="flex-1 flex gap-1 overflow-x-auto scrollbar-thin">${tabs.map(t=>`<button onclick="openPrimaryTab('${t[0]}')" class="px-3 py-2 rounded-lg whitespace-nowrap font-semibold ${activeTab===t[0]?'text-white':''}" style="background:${activeTab===t[0]?state.config.primary_action_color:'transparent'}">${t[1]} ${t[2]}</button>`).join('')}</div>${navCfg.search?`<button onclick="openGlobalSearch()" class="px-3 py-2 rounded-lg bg-indigo-50 text-indigo-700 font-bold" title="ค้นหาทุกอย่าง (Ctrl+K)">🔎<span class="hidden lg:inline"> ค้นหา</span></button>`:''}${navCfg.sync?syncStatusBadgeHtml():''}${navCfg.alerts?`<button onclick="openFrontAlerts()" class="hidden lg:flex items-center gap-1 px-3 py-2 rounded-lg text-xs font-bold whitespace-nowrap ${alertCount?'bg-amber-100 text-amber-800':'bg-emerald-50 text-emerald-700'}" title="แจ้งเตือนหน้าร้าน">${alertCount?`🔔 ${alertCount} รายการต้องตรวจสอบ`:'✅ ยังไม่มีรายการสำคัญที่ต้องแจ้งเตือน'}</button><button onclick="openFrontAlerts()" class="lg:hidden px-2 py-2 rounded-lg ${alertCount?'bg-amber-100 text-amber-800':'bg-emerald-50 text-emerald-700'}" title="${alertCount?`${alertCount} รายการต้องตรวจสอบ`:'ยังไม่มีรายการสำคัญที่ต้องแจ้งเตือน'}">${alertCount?`🔔${alertCount}`:'✅'}</button>`:''}${navCfg.user?`<div class="hidden md:block text-right px-2"><div class="text-xs text-slate-400">เข้าใช้งานโดย</div><div class="font-semibold text-sm">👤 ${esc(currentUser?.name||'')}</div></div>`:''}<div class="relative"><button onclick="menuOpen=!menuOpen;render()" class="px-3 py-2 rounded-lg bg-slate-100">☰</button>${menuPanel}</div></div></div>`
